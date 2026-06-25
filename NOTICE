@@ -1,0 +1,41 @@
+oil-cover
+Copyright (c) 2026 oil 欧呦 (oil-oil)
+
+This product is licensed under the MIT License (see LICENSE).
+
+================================================================================
+Third-party trademarks and logos
+================================================================================
+
+The image assets under `assets/product-logos/` are trademarks and/or logos of
+their respective owners. They are bundled here ONLY as visual reference assets
+for the cover-generation workflow. They are NOT covered by this project's MIT
+license, and their inclusion does NOT imply any affiliation with, sponsorship
+by, or endorsement from the respective companies.
+
+Logos included and their owners (non-exhaustive):
+
+  - OpenAI, ChatGPT, Codex .................... OpenAI
+  - Claude, Claude Code, Anthropic ............ Anthropic, PBC
+  - Cursor .................................... Anysphere Inc.
+  - Gemini .................................... Google LLC
+  - GitHub, GitHub Copilot .................... GitHub, Inc. / Microsoft
+  - Qwen (通义千问) ........................... Alibaba Group
+  - Qoder ..................................... Alibaba Group
+
+Sources these logos were collected from:
+
+  - Lobe Icons (MIT-licensed icon set)
+      package: @lobehub/icons-static-png
+      https://lobehub.com/icons
+      https://github.com/lobehub/lobe-icons
+  - Simple Icons CDN
+      https://cdn.simpleicons.org/
+  - Official brand pages (e.g. https://openai.com/brand/)
+
+The following are assets of the author's own projects:
+
+  - ego-lite.png .... Ego Lite browser
+  - selector.png .... Selector (https://oil-oil.github.io/selector/)
+
+If you are a rights holder and would like a logo removed, please open an issue.
