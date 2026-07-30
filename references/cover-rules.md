@@ -4,11 +4,11 @@
 
 ## 核心目标
 
-- 为小红书 AI 工具实操视频生成稳定、清楚、干净、精致的视频封面。
-- 默认方向是“真实视频证据 + Apple-like 产品视觉 + 清晰标题 + 无人物干净构图”。
+- 为配置的创作者生成稳定、清楚、干净、精致的小红书和 B 站 AI 工具实操视频封面。
+- 默认方向是“真实视频证据 + Apple-like 产品视觉 + 清晰标题”。生图底图保持无人物；用户配置启用头像时，最终头像由代码确定性合成。
 - 封面必须突出真实屏幕内容、可读标题、主产品 Logo、内容相关点缀和轻微空间层次。
 - 参考截图默认用于提炼证据，不用于整张复刻。最终画面要像“重新设计过的实操证据卡片”，只保留能解释主题的界面信号。
-- 最终封面必须由 `openai/gpt-image-2` 一次性生成完整画面，本地工具不能贴字、贴 Logo、拼图、裁切改版或视觉修补。
+- `openai/gpt-image-2` 必须一次性生成完整无人物底图。配置启用头像时，本地工具只允许执行该头像的 alpha 合成；不能本地贴字、贴 Logo、拼其他图片、裁切改版或视觉修补。
 
 ## 视觉传达导演
 
@@ -22,8 +22,10 @@
 
 ## 硬规则
 
-- 最终画面不保留人物。移除真人画中画、摄像头气泡、人脸、头像和人物形象。
-- 人物限制适用于所有层级，包括重建的 UI 卡片、对比图、画廊样本、嵌套截图和小预览条里的真人照片或头像。除非用户明确要求人物，否则统一替换成抽象 UI、图表、产品卡、代码块或中性占位。
+- 源截图、重建 UI 和生图底图不保留人物。移除真人画中画、摄像头气泡、人脸、头像和人物形象；限制适用于 UI 卡片、对比图、画廊样本、嵌套截图和小预览条。
+- 配置启用头像时，最终封面只允许出现配置的一张透明头像，由代码在生图后合成；未启用时最终封面保持无人物。
+- 仅在配置启用头像时，生图底图预留头像安全区，不放标题、Logo、小标签和主证据：3:4 为 `x=48%-100%, y=56%-100%`；4:3 为 `x=60%-100%, y=37%-100%`；16:10 为 `x=64%-100%, y=37%-100%`。安全区只延续背景和非关键屏幕细节，不生成头像、轮廓、占位卡或额外容器。
+- 创作者头像是否启用及素材路径来自用户配置；公开 Skill 默认关闭。启用时的默认布局为：3:4 宽 55%、顶部 58%、向右越界 6%；4:3 宽 38%、顶部 40%、向右越界 3%；16:10 宽 34%、顶部 40%、向右越界 3%，允许底部和右侧自然裁切。
 - 每张封面都要有可见的衬线字体层次，优先用于英文产品名、模型名、数字、小标签或关键词。
 - 主标题必须是第一视觉锚点。除非用户要求低调标题，标题视觉面积要明显大于普通封面。
 - 标题和屏幕必须落在清晰网格里，优先左对齐、居中对齐或轴线对齐，避免随机漂浮和边距混乱。
@@ -32,8 +34,9 @@
 - 标题区域不能只有裸文字。默认必须给标题加 1-2 个内容相关装饰，例如关键词柔和高亮、细下划线、轻量括号、光标标记、窗口状态小标、工作流小标签或结果状态小字。
 - 装饰文字必须来自当前标题、截图、字幕、主题或产品归因，长度要短，优先 2-5 个词，作用是帮读者更快理解当前工作流。
 - 标题、英文产品名、Logo 和产品标识必须在提示词里写成确定值，避免随机品牌、无关 Logo、水印、hashtag 和感叹号。
-- 背景配色必须来自选定关键帧、截图、Logo 或参考图，再做克制延展。
-- 生图提示词必须包含这句背景层开头：`Mandatory visible background: full-canvas clean base, visible fine grid, restrained low-opacity local gradient glow sampled from the selected image, very light grain.`
+- 背景配色从选定关键帧、截图、Logo 或参考图取色相，再统一调成粉调/灰调/奶油调的柔和氛围；禁止把 UI 里的荧光、酸性高饱和功能色原样放大。完整档位见「封面色彩体系」。
+- 背景要有可感知的柔和色彩氛围，不能素成接近纯灰白；氛围允许 1-3 个邻近色相柔和融合，禁止全光谱彩虹和高饱和霓虹。
+- 生图提示词必须包含这句背景层开头：`Mandatory visible background: full-canvas clean base, visible fine grid, a soft pastel color atmosphere of 1-3 neighbouring hues (sampled from the selected image or logo, softened to a creamy/dusty pastel) glowing gently from the edges or corners, very light grain; the atmosphere must be clearly visible yet soft — no neon or acid hues, no full-spectrum rainbow, no plain colorless canvas.`
 - 参考截图不能原样铺进封面。必须先提炼 2-3 个关键证据，再重组为干净界面；删除侧栏历史列表、长段正文、无关路径、通知、状态栏、旧字幕和边缘杂讯。
 - 不能生成额外展示框、白色底卡、手机框、设备壳、第二层容器或后期拼贴感。
 - 禁止把历史案例、测试样例或上一次任务里的产品名、模型名、颜色名、关键词和点缀带入新任务。任何外层文字、品牌、点缀标签和强调词都必须来自当前视频、当前标题、当前字幕、当前截图或当前用户补充信息。
@@ -62,7 +65,8 @@
 
 - 必须是 exact 3:4 portrait cover，接近 1080x1440 的竖向构图；脚本 API 尺寸默认使用 `960x1280`。
 - 标题更集中、更大，手机信息流里先看见标题再看见屏幕。
-- 标题块建议放在上方 10%-38% 区域，屏幕块建议放在下方 38%-96% 区域。
+- 主标题每行横向铺满安全区宽度的约 90%-96%，每行字高约占画面高度 8%-12%；宁可断成两行大字，也不要一行小字。
+- 标题块建议放在上方 10%-42% 区域，屏幕块建议放在下方 42%-96% 区域。
 - 屏幕默认放大到画面下半部，约占画面高度 55%-70%，可只露出 80%-95%。
 - 标题和屏幕要通过轻微重叠、轴线、界面状态、选框或光标形成同一套画面秩序。
 - 竖版可以加入克制点缀，点缀由当前内容决定，用来强调关键动作、界面状态或可见的工作流步骤。
@@ -71,10 +75,19 @@
 
 - 必须是 exact 4:3 horizontal cover；脚本 API 尺寸默认使用 `1280x960`。
 - 标题必须作为第一视觉锚点，不能变成左侧小标签。
-- 标题和屏幕都要足够大，横版建议标题区约占画面宽度 40%-50%，屏幕证据约占画面宽度 45%-55%。
+- 标题和屏幕都要足够大，横版建议标题区约占画面宽度 45%-55%，屏幕证据约占画面宽度 45%-55%，两者可轻微重叠。
+- 横版主标题每行字高约占画面高度 11%-15%，标题块整体（含副标题和装饰）约占画面高度 35%-50%；每行 3-6 个字断行，不要压成一行小字。
 - 屏幕可以更完整，保留清楚的浏览器或工具界面证据。
 - 横版可以加入克制点缀，点缀类型由当前内容决定，用来强化标题阅读、界面状态或屏幕关键区域。
 - 点缀要来自主题逻辑，并且能让读者更快理解当前工作流。
+
+### 16:10 B 站横屏
+
+- 必须是 exact 16:10 horizontal cover；脚本 API 尺寸默认使用 `1280x800`。
+- 标题必须作为第一视觉锚点，屏幕证据保持大且可读；优先利用额外横向空间放大主证据，不要横向堆满细碎 UI。
+- 标题区建议约占画面宽度 38%-48%，屏幕证据约占画面宽度 52%-62%，两者可轻微重叠。
+- 主标题每行字高约占画面高度 11%-15%，每行 3-7 个字断行，避免压成贯穿整张封面的一行小字。
+- 构图要兼顾 B 站信息流缩略图：标题、产品 Logo 和关键结果远离边缘，主证据在缩小后仍能被识别。
 
 ## 屏幕物件
 
@@ -101,14 +114,26 @@
 - 必须保留真实实操感、产品识别和关键操作逻辑。
 - 不要生成假 UI，不要乱改关键文字，不要把真实流程改成无关页面。
 
+## 封面色彩体系
+
+- 封面的外层设计色分三层：底与氛围、强调色、文字灰阶。三层必须合成一套有意图的配色方案，不是各自随机取色。
+- 底色用暖白、冷白、浅灰其一，也可以是极浅的有色纸（淡奶油、淡雾蓝、淡藕粉等）。
+- 背景必须有可感知的柔和色彩氛围，不能素到接近纯灰白、像没设计过的表单页。氛围层允许 1-3 个同家族或邻近色相柔和融合（例如雾蓝+淡紫+浅粉、奶油+淡金），像纸上晕染的柔光，放在边缘、角落或屏幕后方，覆盖约 20%-40% 画面。
+- 氛围层色调统一走「粉调/灰调/奶油调」：高明度、中低饱和、柔和不刺眼；色相之间过渡要柔，不能出现生硬分界。
+- 强调色给关键词 chip、高亮、小标签用：中等饱和、干净明亮但不刺眼，色相要和氛围层呼应；chip 是均匀扁平、轻圆角的浅彩色贴片，边缘干净，不是喷雾光斑。
+- 荧光绿、酸性黄绿、电光蓝等高饱和高亮度纯色，禁止用于背景和大面积高亮；UI 品牌色要先调成粉调/灰调再进外层。
+- 禁止全光谱彩虹（红橙黄绿蓝紫俱全）、高饱和霓虹渐变、喷雾状光斑团和脏灰浊色。邻近色相的柔和 pastel 过渡是允许且鼓励的。
+- 调色约束只管外层设计色：背景、标题高亮、点缀、小标签。屏幕证据内部的 UI 原色不受限制，真实截图该什么色就什么色。
+- 颜色的气质基准：像纸面印刷和晕染的柔和油墨，不像屏幕发光。
+
 ## 背景和阴影
 
-- 背景顺序：纯净底色、细网格、局部低透明取色光感、极轻 grain。
+- 背景顺序：纯净底色、细网格、柔和 pastel 氛围层、极轻 grain。
 - 网格要细、浅、均匀，在空白区域肉眼可见，不能被渐变冲掉。
 - 当局部渐变或屏幕光感经过网格时，网格线可以出现极轻的取样色光泽，像柔和光线掠过纸面或磨砂玻璃。光泽只能增强层次，不能变成霓虹网格或复杂科技线条。
-- 渐变必须从选定关键帧、截图、Logo 或参考图取色。
-- 渐变默认放在边缘、角落或屏幕后方，覆盖约 15%-30% 画面。
-- 不要大面积彩色雾、脏灰底色、复杂科技线条、坐标纹或过度发光。
+- 氛围层从选定关键帧、截图、Logo 或参考图取色相，并按「封面色彩体系」调成粉调/灰调/奶油调后使用，像纸上晕染的柔光。
+- 氛围层默认放在边缘、角落或屏幕后方，覆盖约 20%-40% 画面。
+- 不要荧光酸性色、脏灰底色、复杂科技线条、坐标纹或过度发光。
 - 屏幕阴影默认使用清爽浅阴影：主阴影接近 `0 18px 44px rgba(30,35,40,0.10)`，接触阴影接近 `0 4px 12px rgba(30,35,40,0.06)`。
 - 避免厚重黑影、强烈投影、大面积脏灰阴影、霓虹发光和悬浮过高的夸张阴影。
 
@@ -128,7 +153,9 @@
 ## 关键词和点缀
 
 - 一张封面最多 1-2 个强调区域，优先给产品名、工具名、模型名或关键动作词。
-- 强调方式优先选择柔和背景高亮、浅色贴片、雾面高亮、透明玻璃、细描边、局部反白或小面积低透明渐变。也可以使用取样色或产品色，但要降饱和并作为材质层使用。
+- 关键词强调优先做成浅彩色圆角 chip：一层均匀扁平、轻圆角的 pastel 贴片把整个关键词包住，色相和氛围层呼应（如淡紫蓝、淡粉、奶油黄），边缘干净；不是喷雾状光斑、发光渐变团或霓虹辉光。
+- 其他强调方式可选柔和背景高亮、雾面高亮、透明玻璃、细描边、局部反白或小面积低透明渐变。取样色或产品色必须按「封面色彩体系」调柔后作为材质层使用。
+- 标题区的设计感来自成套的编辑元素：关键词 pastel chip、胶囊小标签、细箭头或流程线、衬线斜体强调、小 Logo 角标。默认组合使用其中 2-3 个，彼此对齐在同一套网格上，不要只落一个孤立的装饰。
 - 关键词强调必须写清具体词、材质、颜色来源和强度。
 - 大标题主体默认保持深色或柔和黑；不要把整行大字直接染成高饱和彩色。
 - 柔和背景高亮应像一层低透明、轻圆角、贴在字后方的材质，不像按钮、胶囊标签、广告 CTA 或独立贴纸。
@@ -159,7 +186,8 @@
 ## 自动质检和返工
 
 - 脚本默认在生图后进行一次视觉质检，不需要人工介入。
-- 质检重点包括：标题可读、标题有内容相关装饰、产品 Logo 像参考图、屏幕物件有裁切感、主证据足够大、无人物摄像头、无完整截图噪音、整体像一张完整生成图。
+- 质检重点包括：标题可读、标题有内容相关装饰、产品 Logo 像参考图、屏幕物件有裁切感、主证据足够大、底图无人物摄像头、无完整截图噪音、整体完整。配置启用头像时，再检查最终图只有一张头像且不挡标题、Logo 或主证据。
+- 配色质检：外层设计色符合「封面色彩体系」——背景有可感知的柔和 pastel 氛围而非纯灰白、氛围色相邻近且过渡柔和、关键词有 pastel chip 或同级强调、无荧光酸性色块、无全光谱彩虹、无脏灰浊色。
 - 如果核心检查失败，脚本必须把失败项转成修正提示，并自动重跑一次。
 - 自动返工只修失败项，必须保留已经成功的标题、构图、产品归因、主视觉和整体风格。
 
@@ -167,13 +195,15 @@
 
 ```text
 Use case: ads-marketing.
-Asset type: Xiaohongshu <exact 3:4 portrait cover / exact 4:3 horizontal cover>.
+Asset type: <Xiaohongshu exact 3:4 portrait cover / Xiaohongshu exact 4:3 horizontal cover / Bilibili exact 16:10 horizontal cover>.
 Input images: Image 1 is the selected real screen evidence frame. Image 2 is the product logo if provided.
-Primary request: Create one complete Apple-like AI tool tutorial cover. Preserve real product identity and tutorial evidence. Remove person, webcam bubble, old subtitles, and unrelated clutter.
+Primary request: Create one complete person-free Apple-like AI tool tutorial base cover. Preserve real product identity and tutorial evidence. Remove person, webcam bubble, old subtitles, and unrelated clutter. <If creator portrait is enabled, reserve its configured safe area for a deterministic local composite; otherwise keep the final cover person-free.>
 Content attribution: main topic is "<主主题>"; main product is "<主产品>"; host interface is "<承载界面或无>"; supporting brands are "<辅助品牌或无>".
 Title text: "<主标题>" with exact line breaks "<换行方案>"; optional short subtitle "<可选副标题>" clearly smaller than the main title; small product mark "<主产品名或 Logo>".
 Composition: <标题位置、屏幕位置、互动状态、Logo 位置、点缀类型> with strict editorial alignment and readable phone-feed hierarchy.
-Mandatory visible background: full-canvas clean <浅色或深色> base, visible fine grid, restrained low-opacity local gradient glow sampled from <具体颜色来源>, and very light grain; place the gradient at <位置>, covering about <15%-30%> of the canvas.
+Local portrait composite guard: keep the generated base entirely person-free; reserve <当前画幅安全区> for the later fixed portrait overlay; place no title, Logo, label, or primary evidence there; continue only background and noncritical screen detail; do not draw a portrait, silhouette, placeholder, empty card, webcam bubble, avatar, mascot, or character.
+Mandatory visible background: full-canvas clean <浅色或极浅有色纸> base, visible fine grid, a soft pastel color atmosphere of <1-3 个邻近色相, 如 dusty periwinkle + soft pink / cream + pale gold> (hues from <具体颜色来源>, softened to creamy/dusty pastel) glowing gently from <位置>, and very light grain; the atmosphere covers about <20%-40%> of the canvas and must be clearly visible yet soft.
+Colour system: <底色> base with a pastel atmosphere of <邻近色相组>, plus one keyword chip accent in <chip 颜色, 和氛围呼应>; all hues stay creamy/dusty — never neon, acid, or full-spectrum rainbow; body text stays deep graphite.
 Screen crop plan: one visible screen/browser object only; show about <比例>; offset <方向>; clip <边/角> by canvas edge, safe area, or invisible mask; keep only the screen object's own edge or browser chrome.
 Screenshot distillation plan: treat the selected screenshot as evidence source, not a full screenshot to copy; extract only <2-3 个关键证据>; remove <侧栏/长文/字幕/头像/无关小字/路径/通知/状态栏>; rebuild the screen area as a simplified real-feeling UI with generous whitespace and a clear focal hierarchy.
 Visual communication plan: one-glance subject is <0.5 秒内要读者看到的结果>; primary evidence is <最能证明结果的区域>; make it occupy <55%-75%> of the screen content area; supporting evidence is <辅助 UI> and must stay below <15%-30%>; sacrifice <可以删掉/裁掉/弱化的信息> if it makes the primary evidence smaller.
@@ -182,5 +212,5 @@ Shadow plan: screen object only, clean light graphite shadow close to `0 18px 44
 Text style: Chinese main title uses fixed Apple-like PingFang SC / SF Pro CJK; visible restrained serif accent on "<具体词>"; colors: <每段文字颜色>; no random colored words.
 Title decoration: add <1-2 个内容相关标题装饰>, such as a subtle highlight behind "<关键词>", a tiny "<当前内容小标签>", a cursor mark, bracket, or UI state chip; it must be aligned to the title grid and help readers understand this exact workflow.
 Decoration: <1-2 个内容相关点缀>, subtle, aligned, useful for reading the current topic.
-Avoid: full screenshot copy, unfiltered raw screenshot, sidebar history list, long chat transcript, dense tiny text, extra showcase frame, white backing card, phone frame, device shell, second container, fake UI, person/avatar/face, watermark, hashtags, unrelated logo, low-resolution artifacts, large misty gradient, neon cyberpunk, heavy black shadow.
+Avoid: full screenshot copy, unfiltered raw screenshot, sidebar history list, long chat transcript, dense tiny text, extra showcase frame, white backing card, phone frame, device shell, second container, fake UI, person/avatar/face, watermark, hashtags, unrelated logo, low-resolution artifacts, acid or neon hues, fluorescent color blocks, full-spectrum rainbow gradient, plain colorless background, neon cyberpunk, heavy black shadow.
 ```

@@ -1,6 +1,6 @@
 # AI 产品参考资产
 
-本 Skill 内置常用 AI 产品 Logo，位置是 `assets/product-logos/`。默认使用透明背景 PNG；旧 SVG 保留为备用素材。第三方商标的来源与归属见仓库根目录的 `NOTICE`。
+本 Skill 内置常用 AI 产品 Logo，位置是 `assets/product-logos/`。默认使用透明背景 PNG；旧 SVG 保留为备用素材。需要同步到外部素材库时，只使用用户配置里的 `product_asset_mirror`，不要在 Skill 中写个人绝对路径。
 
 ## 资产列表
 
@@ -13,6 +13,8 @@
 | Anthropic | `anthropic.png` | Anthropic 公司或模型生态主题 |
 | Cursor | `cursor.png` | Cursor、IDE 对比、AI 编程工具主题 |
 | Gemini | `gemini.png` | Gemini、Google AI、模型对比主题 |
+| Kimi | `kimi.png` | Kimi、Kimi K3、Kimi Code、Moonshot AI 主题 |
+| LongCat | `longcat.png` | LongCat、LongCat 2.0、美团模型和模型对比主题 |
 | GitHub Copilot | `github-copilot.png` | Copilot、GitHub 工作流、IDE 辅助主题 |
 | GitHub | `github.png` | GitHub、仓库、Issue、PR、Actions 和协作开发主题 |
 | Ego Lite | `ego-lite.png` | ego-browser、Ego Lite 浏览器、浏览器自动化主题 |
@@ -26,7 +28,7 @@
 - 生成前说明用了哪些参考图，生成后把使用的 Logo 文件名记录在提示词说明里。
 - 如果主产品明确有 Logo，但本清单没有对应 PNG，先寻找官方品牌页、产品官网、GitHub 仓库、可信图标库或已安装 App 包内图标；优先使用透明背景 PNG。只有找到的来源可信、图形清晰、没有水印，才补进资产目录。
 - 如果来源只提供 SVG、ICNS 或 favicon，可以转换成 640x640 RGBA PNG，并保留来源说明；不要把低清截图、搜索结果缩略图或非官方改版图标当成长期资产。
-- 新增高频产品后，同步更新本文件，以及 `scripts/generate_oil_cover.py` 里的自动匹配表（`AUTO_PRODUCT_LOGOS`）。
+- 新增高频产品后，同步更新本文件、配置的 `generate_oil_cover.py` 自动匹配表；设置了 `product_asset_mirror` 时再更新镜像目录里的说明文件。
 
 ## 来源
 
@@ -35,6 +37,8 @@
 - Lobe Icons PNG package：`@lobehub/icons-static-png@1.91.0`
 - Lobe Icons：`https://lobehub.com/icons`
 - Lobe Icons GitHub：`https://github.com/lobehub/lobe-icons`
-- Ego Lite app icon：从本地 Ego Lite app 包内图标提取
+- Ego Lite app icon：`/Applications/ego lite.app/Contents/Resources/app.icns`
 - Selector favicon：`https://oil-oil.github.io/selector/assets/favicon.svg`
+- LongCat 2.0 官方 Hugging Face 仓库：`https://huggingface.co/meituan-longcat/LongCat-2.0/blob/main/figures/longcat_logo.svg`
+- Kimi 官网 favicon：`https://www.kimi.com/favicon.ico`；长期资产使用同图形的 Lobe Icons 640×640 透明 PNG / SVG
 - Simple Icons CDN：`https://cdn.simpleicons.org/`

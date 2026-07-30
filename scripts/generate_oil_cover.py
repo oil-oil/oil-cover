@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Generate oil-cover Xiaohongshu covers with Zenmux.
+Generate oil-cover Xiaohongshu and Bilibili covers with Zenmux.
 
 The script reads the oil-cover reference rules, asks Gemini to select/plan a
 cover, then calls gpt-image-2 to generate the final cover images.
@@ -30,17 +30,21 @@ from typing import Any
 def _resolve_skill_dir() -> Path:
     """Locate the installed oil-cover skill directory without hardcoding a user.
 
-    Prefer the Claude skill, fall back to the Codex copy, so the script keeps
-    working across machines/users. Override with OIL_COVER_SKILL_DIR if needed.
+    Prefer an explicit override, then the directory that owns this script. A
+    project-local copy of the script falls back to installed Codex/Claude skills.
+    Override with OIL_COVER_SKILL_DIR if needed.
     """
     override = os.environ.get("OIL_COVER_SKILL_DIR", "").strip()
     candidates = [Path(override)] if override else []
+    script_skill_dir = Path(__file__).resolve().parent.parent
+    if (script_skill_dir / "references" / "cover-rules.md").exists():
+        candidates.append(script_skill_dir)
     candidates += [
-        Path.home() / ".claude" / "skills" / "oil-cover",
         Path.home() / ".codex" / "skills" / "oil-cover",
+        Path.home() / ".claude" / "skills" / "oil-cover",
     ]
     for candidate in candidates:
-        if candidate.exists():
+        if (candidate / "references" / "cover-rules.md").exists():
             return candidate
     return candidates[-1]
 
@@ -50,10 +54,67 @@ DEFAULT_RULES_FILE = SKILL_DIR / "references" / "cover-rules.md"
 DEFAULT_API_BASE = "https://zenmux.ai/api/v1"
 DEFAULT_ANALYSIS_MODEL = "google/gemini-3.5-flash"
 DEFAULT_IMAGE_MODEL = "openai/gpt-image-2"
-DEFAULT_API_KEY_FILE = Path(__file__).resolve().parent.parent / ".zenmux_api_key"
+
+USER_CONFIG_FILE = Path(
+    os.environ.get("OIL_COVER_CONFIG", str(Path.home() / ".oil-cover" / "config.json"))
+).expanduser()
+
+
+def load_user_config() -> dict[str, Any]:
+    if not USER_CONFIG_FILE.exists():
+        return {}
+    try:
+        payload = json.loads(USER_CONFIG_FILE.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise RuntimeError(f"Invalid oil-cover user config: {USER_CONFIG_FILE}: {exc}") from exc
+    if not isinstance(payload, dict):
+        raise RuntimeError(f"oil-cover user config must be a JSON object: {USER_CONFIG_FILE}")
+    return payload
+
+
+USER_CONFIG = load_user_config()
+CREATOR_NAME = str(USER_CONFIG.get("creator_name") or "the creator").strip()
+configured_api_key_file = str(USER_CONFIG.get("api_key_file") or "").strip()
+DEFAULT_API_KEY_FILE = (
+    Path(configured_api_key_file).expanduser()
+    if configured_api_key_file
+    else Path.home() / ".config" / "oil-cover" / "zenmux_api_key"
+)
 PRODUCT_LOGO_DIR = SKILL_DIR / "assets" / "product-logos"
+creator_portrait_config = USER_CONFIG.get("creator_portrait") or {}
+if not isinstance(creator_portrait_config, dict):
+    raise RuntimeError(f"creator_portrait config must be an object: {USER_CONFIG_FILE}")
+configured_portrait_path = str(creator_portrait_config.get("path") or "").strip()
+DEFAULT_CREATOR_PORTRAIT_OVERLAY = {
+    "label": "configured_creator_portrait",
+    "path": Path(configured_portrait_path).expanduser() if configured_portrait_path else None,
+    "role": "local_code_composite",
+}
+DEFAULT_CREATOR_PORTRAIT_ENABLED = bool(creator_portrait_config.get("enabled", False))
+CREATOR_PORTRAIT_LAYOUTS = {
+    # The transparent asset is intentionally allowed to extend below the canvas.
+    "3x4": {
+        "width_ratio": 0.55,
+        "top_ratio": 0.58,
+        "right_ratio": -0.06,
+        "safe_area": "x=48%-100%, y=56%-100%",
+    },
+    "4x3": {
+        "width_ratio": 0.38,
+        "top_ratio": 0.40,
+        "right_ratio": -0.03,
+        "safe_area": "x=60%-100%, y=37%-100%",
+    },
+    "16x10": {
+        "width_ratio": 0.34,
+        "top_ratio": 0.40,
+        "right_ratio": -0.03,
+        "safe_area": "x=64%-100%, y=37%-100%",
+    },
+}
 RETRYABLE_HTTP_CODES = {408, 429, 500, 502, 503, 504}
 AUTO_PRODUCT_LOGOS = [
+    (r"\bkimi(?:\s+k3)?\b|月之暗面|Moonshot(?:\s*AI)?", "kimi.png"),
     (r"\bclaude\s+code\b|Claude Code|ClaudeCode|claude-code", "claude-code.png"),
     (r"\bcodex\b|Codex|代码智能体|Coding Agent", "codex-openai.png"),
     (r"\bchatgpt\b|ChatGPT|\bopenai\b|OpenAI", "openai.png"),
@@ -67,6 +128,7 @@ AUTO_PRODUCT_LOGOS = [
     (r"\bselector\b|Selector|Visual Element Picker|元素选择器", "selector.png"),
     (r"\bqoder\b|Qoder", "qoder.png"),
     (r"\bqwen\b|Qwen|通义千问|千问|通义", "qwen.png"),
+    (r"\blongcat(?:[-\s]?2(?:\.0)?)?\b|LongCat|Long Cat|美团龙猫", "longcat.png"),
 ]
 
 
@@ -103,6 +165,21 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         help="Input screenshot/keyframe. Can be passed multiple times.",
     )
+    source.add_argument(
+        "--composite-base",
+        type=Path,
+        help="Composite the default creator portrait onto an already-generated person-free base image, without API calls.",
+    )
+    parser.add_argument(
+        "--composite-output",
+        type=Path,
+        help="Output path for --composite-base. Default: <base>_with_creator.png.",
+    )
+    parser.add_argument(
+        "--composite-aspect",
+        choices=("3x4", "4x3", "16x10"),
+        help="Layout for --composite-base. If omitted, infer it from the base dimensions.",
+    )
     parser.add_argument("--title", default="", help="Known video title or desired topic title.")
     parser.add_argument("--topic", default="", help="Extra topic/context for the cover.")
     parser.add_argument("--subtitle", type=Path, help="Optional subtitle, transcript, or script file.")
@@ -122,23 +199,20 @@ def parse_args() -> argparse.Namespace:
         "--api-key-file",
         type=Path,
         default=DEFAULT_API_KEY_FILE,
-        help="Optional local file containing the Zenmux API key. Default: .zenmux_api_key",
+        help="Optional local file containing the Zenmux API key. Default: user config or ~/.config/oil-cover/zenmux_api_key.",
     )
-    parser.add_argument("--frame-count", type=int, default=12, help="Candidate frames for video input. More candidates give the model better frame choices.")
+    parser.add_argument("--frame-count", type=int, default=8, help="How many candidate frames the local prefilter surfaces for the analysis model to choose from. More candidates give the model better frame choices but a larger payload.")
     parser.add_argument(
         "--candidate-seconds",
         default="",
-        help="Comma-separated timestamps to extract from the video, for example 1,8,24.5. Overrides automatic frame selection.",
+        help="Comma-separated timestamps to extract from the video, for example 1,8,24.5. Explicit manual override that skips the local prefilter.",
     )
     parser.add_argument(
-        "--frame-select",
-        choices=("video", "sample"),
-        default="video",
-        help="How to pick evidence frames for video input. 'video' (default) sends a compressed clip to the analysis model and lets it watch the whole video and choose the best timestamp(s); 'sample' falls back to blind uniform sampling. Ignored when --candidate-seconds is set.",
+        "--scan-fps",
+        type=float,
+        default=0.0,
+        help="Sampling rate for the local prefilter scan. 0 = auto (2 fps for videos <= 5 min, otherwise 1 fps).",
     )
-    parser.add_argument("--select-fps", type=float, default=1.0, help="Frames-per-second when compressing the clip sent for video timestamp selection.")
-    parser.add_argument("--select-width", type=int, default=512, help="Scaled width of the compressed clip sent for video timestamp selection.")
-    parser.add_argument("--select-count", type=int, default=1, help="How many candidate timestamps the model returns in 'video' frame-select mode (best first). Default 1: trust the single best moment it picks from the whole video.")
     parser.add_argument("--max-frame-width", type=int, default=1280)
     parser.add_argument(
         "--portrait-size",
@@ -151,15 +225,26 @@ def parse_args() -> argparse.Namespace:
         help="Exact 4:3 size for the image API. Zenmux requires width and height divisible by 16.",
     )
     parser.add_argument(
+        "--bilibili-size",
+        default="1280x800",
+        help="Exact 16:10 Bilibili size for the image API. Zenmux requires width and height divisible by 16.",
+    )
+    parser.add_argument(
         "--generation-only",
         action="store_true",
         help="Use /images/generations instead of /images/edits, so reference images are not uploaded to the image API.",
     )
     parser.add_argument(
+        "--default-creator-portrait",
+        action=argparse.BooleanOptionalAction,
+        default=DEFAULT_CREATOR_PORTRAIT_ENABLED,
+        help="Composite the configured transparent creator portrait with deterministic local code. Public default: disabled; configure creator_portrait.enabled or pass --default-creator-portrait.",
+    )
+    parser.add_argument(
         "--aspect",
-        choices=("both", "3x4", "4x3"),
-        default="both",
-        help="Which cover aspect to generate. Analysis still prepares both prompts.",
+        choices=("all", "both", "3x4", "4x3", "16x10"),
+        default="all",
+        help="Which cover aspect to generate. Default: all three in parallel. Legacy 'both' keeps 3x4 + 4x3.",
     )
     parser.add_argument(
         "--allow-subtitle",
@@ -240,23 +325,13 @@ def ffprobe_duration(video: Path) -> float:
         raise RuntimeError(f"could not read duration for {video}") from exc
 
 
-def candidate_times(args: argparse.Namespace, duration: float) -> list[float]:
-    if args.candidate_seconds.strip():
-        values = []
-        for raw in args.candidate_seconds.split(","):
-            raw = raw.strip()
-            if raw:
-                values.append(max(0.0, min(float(raw), duration)))
-        return unique_times(values)
-
-    count = max(2, args.frame_count)
-    start = min(0.2, duration * 0.02)
-    if count == 2:
-        return unique_times([start, duration * 0.55])
-    values = [start]
-    for idx in range(count - 1):
-        ratio = 0.12 + (0.80 * idx / max(count - 2, 1))
-        values.append(duration * ratio)
+def parse_candidate_seconds(args: argparse.Namespace, duration: float) -> list[float]:
+    """Parse the explicit --candidate-seconds manual override into clamped timestamps."""
+    values = []
+    for raw in args.candidate_seconds.split(","):
+        raw = raw.strip()
+        if raw:
+            values.append(max(0.0, min(float(raw), duration)))
     return unique_times(values)
 
 
@@ -272,9 +347,7 @@ def unique_times(values: list[float]) -> list[float]:
     return output
 
 
-def extract_video_frames(
-    args: argparse.Namespace, run_dir: Path, api_key: str = ""
-) -> list[dict[str, str]]:
+def extract_video_frames(args: argparse.Namespace, run_dir: Path) -> list[dict[str, str]]:
     video = args.video
     if not video or not video.exists():
         fail(f"video does not exist: {video}")
@@ -288,11 +361,9 @@ def extract_video_frames(
     duration = ffprobe_duration(video)
     frames: list[dict[str, str]] = []
 
-    first = frames_dir / "first_frame.jpg"
-    extract_frame(video, 0.0, first, args.max_frame_width)
-    frames.append({"label": "first_frame", "path": str(first), "timestamp": "0.00"})
-
-    for idx, timestamp in enumerate(resolve_candidate_timestamps(args, api_key, run_dir, duration), start=1):
+    # No forced first_frame: the local prefilter already scans the opening seconds, and a
+    # forced t=0 frame is almost always a title/intro card that just pollutes the candidate set.
+    for idx, timestamp in enumerate(resolve_candidate_timestamps(args, run_dir, duration), start=1):
         out = frames_dir / f"candidate_{idx:02d}_{timestamp:06.2f}s.jpg"
         extract_frame(video, timestamp, out, args.max_frame_width)
         frames.append({"label": f"candidate_{idx:02d}", "path": str(out), "timestamp": f"{timestamp:.2f}"})
@@ -320,9 +391,30 @@ def extract_frame(video: Path, timestamp: float, output: Path, max_width: int) -
     )
 
 
-def compress_for_selection(args: argparse.Namespace, run_dir: Path) -> Path:
-    """Down-sample the video to a small low-fps clip for whole-video timestamp selection."""
-    clip = run_dir / "select_clip.mp4"
+def _laplacian_variance(gray: Any) -> float:
+    """Variance of the 4-neighbour Laplacian: a cheap, robust sharpness proxy.
+
+    Low values mean blur / motion-blur / out-of-focus; high values mean crisp edges
+    and detail. Computed with plain numpy slicing so no scipy/opencv dependency is needed.
+    """
+    lap = (
+        4.0 * gray[1:-1, 1:-1]
+        - gray[:-2, 1:-1]
+        - gray[2:, 1:-1]
+        - gray[1:-1, :-2]
+        - gray[1:-1, 2:]
+    )
+    return float(lap.var())
+
+
+def _scan_video_frames(
+    args: argparse.Namespace, run_dir: Path, fps: float, width: int
+) -> list[Path]:
+    """Down-sample the whole video to small JPEGs for local scoring (one decode pass)."""
+    scan_dir = run_dir / "scan"
+    scan_dir.mkdir(parents=True, exist_ok=True)
+    for stale in scan_dir.glob("scan_*.jpg"):
+        stale.unlink()
     run(
         [
             "ffmpeg",
@@ -330,128 +422,133 @@ def compress_for_selection(args: argparse.Namespace, run_dir: Path) -> Path:
             "-i",
             str(args.video),
             "-vf",
-            f"fps={args.select_fps},scale={args.select_width}:-2",
-            "-c:v",
-            "libx264",
-            "-crf",
-            "30",
-            "-preset",
-            "veryfast",
+            f"fps={fps},scale={width}:-2",
+            "-q:v",
+            "5",
             "-an",
-            str(clip),
+            str(scan_dir / "scan_%05d.jpg"),
         ]
     )
-    return clip
+    return sorted(scan_dir.glob("scan_*.jpg"))
 
 
-def select_timestamps_via_video(
-    args: argparse.Namespace, api_key: str, run_dir: Path, duration: float
+def select_timestamps_local(
+    args: argparse.Namespace, run_dir: Path, duration: float
 ) -> list[float]:
-    """Send a compressed clip of the whole video to the analysis model and let it choose the
-    best cover-frame timestamp(s). Returns timestamps in seconds, best first."""
-    clip = compress_for_selection(args, run_dir)
-    data_url = f"data:video/mp4;base64,{base64.b64encode(clip.read_bytes()).decode()}"
-    want = max(1, args.select_count)
-    pick_clause = (
-        "choose the single best moment"
-        if want == 1
-        else f"choose up to {want} candidate moments, best first,"
-    )
-    subject_hint = " / ".join(part for part in [args.title.strip(), args.topic.strip()] if part)
-    subject_line = (
-        f"The video's subject, use this to anchor your choice: {subject_hint}. "
-        if subject_hint
-        else ""
-    )
-    instruction = (
-        f"This is a roughly {duration:.0f}s screen-recording tutorial for an AI tool. "
-        f"{subject_line}"
-        f"Watch the whole video and {pick_clause} that would make the strongest Xiaohongshu cover. "
-        "The frame must let a viewer recognize WHICH tool or product the video is about: prefer a moment that "
-        "clearly shows the main tool/product named in the subject actually in use (its real interface, panel, "
-        "or workflow), not merely the prettiest end-result or generated output that any tool could have produced "
-        "and that hides the subject. Favor a clean, information-rich screen tied to the subject. Avoid "
-        "transitions, loading or empty/placeholder states, blurry frames, pure title/intro cards, and "
-        "webcam/face-only shots. "
-        'Return strict JSON: {"candidates": [{"timestamp_seconds": <number>, "reason": "<short>"}]}.'
-    )
-    messages = [
-        {"role": "system", "content": "You are a precise video cover-frame selector. Return strict JSON only."},
-        {
-            "role": "user",
-            "content": [
-                {"type": "text", "text": instruction},
-                {"type": "video_url", "video_url": {"url": data_url}},
-            ],
-        },
-    ]
-    payload = {
-        "model": args.analysis_model,
-        "messages": messages,
-        "temperature": 0.2,
-        "response_format": {"type": "json_object"},
-    }
-    select_timeout = max(args.timeout, 300)
-    data: dict[str, Any] | None = None
-    last_error: Exception | None = None
-    for attempt in range(3):
-        response = post_json(
-            f"{args.api_base.rstrip('/')}/chat/completions", payload, api_key, select_timeout
+    """Pick candidate cover-frame timestamps locally, with no model call.
+
+    Scans the whole video at a low resolution/fps, scores every sampled frame for
+    sharpness (Laplacian variance), brightness and content (std-dev), hard-drops
+    black / blown-out / near-uniform (blank/loading) frames, then returns the sharpest
+    surviving frame in each of N time buckets so candidates are technically clean AND
+    spread across the video. The analysis model then chooses the best one semantically.
+    """
+    try:
+        import numpy as np
+        from PIL import Image
+    except Exception as exc:  # pragma: no cover - dependency guard
+        raise RuntimeError(f"local frame selection needs numpy + Pillow: {exc}") from exc
+
+    want = max(2, args.frame_count)
+    scan_fps = args.scan_fps if args.scan_fps and args.scan_fps > 0 else (2.0 if duration <= 300 else 1.0)
+    files = _scan_video_frames(args, run_dir, scan_fps, 384)
+    if not files:
+        raise RuntimeError("local scan produced no frames")
+
+    scored: list[dict[str, Any]] = []
+    for idx, path in enumerate(files):
+        try:
+            with Image.open(path) as im:
+                gray = np.asarray(im.convert("L"), dtype=np.float32)
+        except Exception:
+            continue
+        if gray.shape[0] < 3 or gray.shape[1] < 3:
+            continue
+        mean = float(gray.mean())
+        std = float(gray.std())
+        sharp = _laplacian_variance(gray)
+        ts = idx / scan_fps
+        if duration > 0.1:
+            ts = min(ts, duration - 0.05)
+        # Hard-reject: near-black, blown-out white, and near-uniform (blank/solid/loading) frames.
+        usable = 15.0 <= mean <= 248.0 and std >= 8.0
+        scored.append(
+            {"ts": round(ts, 2), "mean": mean, "std": std, "sharp": sharp, "usable": usable}
         )
-        try:
-            data = extract_json_from_text(response["choices"][0]["message"]["content"])
-            break
-        except RuntimeError as exc:
-            last_error = exc
-            print(f"Frame-selection JSON parse failed (attempt {attempt + 1}/3): {exc}", file=sys.stderr)
-    if data is None:
-        raise RuntimeError(f"video frame selection did not return valid JSON: {last_error}")
-    (run_dir / "frame_selection.json").write_text(
-        json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8"
+
+    if not scored:
+        raise RuntimeError("local scan scored no frames")
+    pool = [s for s in scored if s["usable"]] or scored
+
+    # Temporal spread: split the timeline into `want` buckets, keep the sharpest survivor in each.
+    buckets = max(1, want)
+    seg = duration / buckets if duration > 0 else max((s["ts"] for s in pool), default=1.0) + 1.0
+    picks: list[dict[str, Any]] = []
+    for b in range(buckets):
+        lo, hi = b * seg, (b + 1) * seg
+        in_bucket = [s for s in pool if lo <= s["ts"] < hi]
+        if not in_bucket:
+            continue
+        picks.append(max(in_bucket, key=lambda s: s["sharp"]))
+
+    # Top up from the sharpest unused survivors if some buckets were empty.
+    if len(picks) < want:
+        chosen = {p["ts"] for p in picks}
+        for s in sorted((s for s in pool if s["ts"] not in chosen), key=lambda s: s["sharp"], reverse=True):
+            picks.append(s)
+            chosen.add(s["ts"])
+            if len(picks) >= want:
+                break
+
+    picks.sort(key=lambda s: s["ts"])
+    times = unique_times([p["ts"] for p in picks])[:want]
+
+    (run_dir / "frame_selection_local.json").write_text(
+        json.dumps(
+            {
+                "scan_fps": scan_fps,
+                "sampled": len(scored),
+                "usable": sum(1 for s in scored if s["usable"]),
+                "buckets": buckets,
+                "picked": times,
+                "detail": [
+                    {
+                        "ts": p["ts"],
+                        "sharp": round(p["sharp"], 1),
+                        "mean": round(p["mean"], 1),
+                        "std": round(p["std"], 1),
+                        "usable": p["usable"],
+                    }
+                    for p in picks
+                ],
+            },
+            ensure_ascii=False,
+            indent=2,
+        ),
+        encoding="utf-8",
     )
-    times: list[float] = []
-    seen: set[int] = set()
-    for item in data.get("candidates") or []:
-        if not isinstance(item, dict):
-            continue
-        try:
-            ts = float(item.get("timestamp_seconds"))
-        except (TypeError, ValueError):
-            continue
-        ts = max(0.0, min(ts, max(duration - 0.05, 0.0)))
-        marker = int(round(ts * 10))
-        if marker in seen:
-            continue
-        seen.add(marker)
-        times.append(round(ts, 2))
-        if len(times) >= want:
-            break
     if not times:
-        raise RuntimeError("video frame selection returned no usable timestamps")
+        raise RuntimeError("local frame selection produced no timestamps")
     return times
 
 
 def resolve_candidate_timestamps(
-    args: argparse.Namespace, api_key: str, run_dir: Path, duration: float
+    args: argparse.Namespace, run_dir: Path, duration: float
 ) -> list[float]:
-    """Decide which timestamps to extract as candidate evidence frames."""
+    """Decide which timestamps to extract as candidate evidence frames.
+
+    Either the explicit --candidate-seconds manual override, or the local ffmpeg
+    prefilter. There is no silent quality-degrading fallback: if the prefilter
+    cannot produce frames, the run fails loudly so the problem is visible.
+    """
     if args.candidate_seconds.strip():
-        return candidate_times(args, duration)
-    if args.frame_select == "video" and not args.dry_run and api_key:
-        try:
-            picks = select_timestamps_via_video(args, api_key, run_dir, duration)
-            if picks:
-                print(
-                    "Frame selection (video): " + ", ".join(f"{t:.2f}s" for t in picks),
-                    file=sys.stderr,
-                )
-                return picks
-        except Exception as exc:
-            print(
-                f"Video frame selection failed, falling back to uniform sampling: {exc}",
-                file=sys.stderr,
-            )
-    return candidate_times(args, duration)
+        return parse_candidate_seconds(args, duration)
+    picks = select_timestamps_local(args, run_dir, duration)
+    print(
+        "Frame selection (local prefilter): " + ", ".join(f"{t:.2f}s" for t in picks),
+        file=sys.stderr,
+    )
+    return picks
 
 
 def copy_input_images(args: argparse.Namespace, run_dir: Path) -> list[dict[str, str]]:
@@ -569,6 +666,131 @@ def copy_logos(args: argparse.Namespace, run_dir: Path, subtitle_text: str = "")
     return refs
 
 
+def prepare_creator_portrait_overlay(run_dir: Path) -> dict[str, Any]:
+    overlays_dir = run_dir / "overlays"
+    overlays_dir.mkdir(parents=True, exist_ok=True)
+    configured_path = DEFAULT_CREATOR_PORTRAIT_OVERLAY.get("path")
+    if not configured_path:
+        fail(
+            "creator portrait is enabled but creator_portrait.path is missing "
+            f"from {USER_CONFIG_FILE}"
+        )
+    src = Path(configured_path)
+    if not src.exists():
+        fail(f"default creator portrait overlay is missing: {src}")
+    dst = overlays_dir / "creator-portrait.png"
+    shutil.copy2(src, dst)
+    return {
+        "label": str(DEFAULT_CREATOR_PORTRAIT_OVERLAY["label"]),
+        "path": str(dst),
+        "source_path": str(src),
+        "role": str(DEFAULT_CREATOR_PORTRAIT_OVERLAY["role"]),
+        "layouts": CREATOR_PORTRAIT_LAYOUTS,
+    }
+
+
+def creator_portrait_plan(enabled: bool, overlay: dict[str, Any] | None = None) -> dict[str, Any]:
+    if not enabled:
+        return {
+            "enabled": False,
+            "mode": "none",
+            "placement": "none",
+            "reserve_base_area": False,
+        }
+    return {
+        "enabled": True,
+        "mode": "local_code_composite",
+        "asset": str((overlay or {}).get("path", DEFAULT_CREATOR_PORTRAIT_OVERLAY["path"])),
+        "placement": "lower-right, right-edge anchored, bottom-clipped",
+        "reserve_base_area": True,
+        "layouts": CREATOR_PORTRAIT_LAYOUTS,
+    }
+
+
+def creator_portrait_prompt_guard(aspect_key: str) -> str:
+    layout = CREATOR_PORTRAIT_LAYOUTS[aspect_key]
+    right_ratio = float(layout["right_ratio"])
+    right_placement = (
+        f"extends {abs(right_ratio):.0%} past the right edge"
+        if right_ratio < 0
+        else f"right offset {right_ratio:.0%}"
+    )
+    return (
+        " Local portrait composite guard: keep the generated base entirely person-free. "
+        f"Reserve the bottom-right overlay-safe area {layout['safe_area']}; do not place the title, product "
+        "logo, small labels, or primary evidence there. Continue the background and only noncritical screen "
+        "detail beneath that area; do not draw a portrait, silhouette, placeholder, empty card, webcam bubble, "
+        f"avatar, mascot, or character. After generation, deterministic local code will composite {CREATOR_NAME}'s "
+        f"transparent paper-cut portrait at {layout['width_ratio']:.0%} of canvas width, {right_placement}, "
+        f"top {layout['top_ratio']:.0%}, with natural bottom/right edge clipping."
+    )
+
+
+def composite_creator_portrait(
+    base_path: Path,
+    output_path: Path,
+    overlay_path: Path,
+    aspect_key: str,
+) -> dict[str, Any]:
+    try:
+        from PIL import Image
+    except ImportError as exc:
+        raise RuntimeError("Pillow is required for the default creator portrait composite.") from exc
+
+    layout = CREATOR_PORTRAIT_LAYOUTS[aspect_key]
+    with Image.open(base_path) as base_image, Image.open(overlay_path) as portrait_image:
+        base = base_image.convert("RGBA")
+        portrait = portrait_image.convert("RGBA")
+        if portrait.getchannel("A").getbbox() is None:
+            raise RuntimeError(f"creator portrait overlay has no visible alpha content: {overlay_path}")
+
+        target_width = max(1, round(base.width * float(layout["width_ratio"])))
+        target_height = max(1, round(portrait.height * target_width / portrait.width))
+        portrait = portrait.resize((target_width, target_height), Image.Resampling.LANCZOS)
+
+        right_offset = round(base.width * float(layout["right_ratio"]))
+        x = base.width - right_offset - target_width
+        y = round(base.height * float(layout["top_ratio"]))
+        layer = Image.new("RGBA", base.size, (0, 0, 0, 0))
+        layer.paste(portrait, (x, y), portrait)
+        merged = Image.alpha_composite(base, layer).convert("RGB")
+
+        temp_path = output_path.with_name(f".{output_path.name}.{uuid.uuid4().hex}.tmp.png")
+        merged.save(temp_path, format="PNG", optimize=True)
+        os.replace(temp_path, output_path)
+
+    return {
+        "mode": "local_code_composite",
+        "asset": str(overlay_path),
+        "base_image": str(base_path),
+        "output_image": str(output_path),
+        "canvas": {"width": base.width, "height": base.height},
+        "placement": {
+            "x": x,
+            "y": y,
+            "width": target_width,
+            "height": target_height,
+            "width_ratio": layout["width_ratio"],
+            "top_ratio": layout["top_ratio"],
+            "right_ratio": layout["right_ratio"],
+            "clipped_bottom_px": max(0, y + target_height - base.height),
+            "clipped_right_px": max(0, x + target_width - base.width),
+        },
+    }
+
+
+def infer_creator_portrait_aspect(base_path: Path) -> str:
+    try:
+        from PIL import Image
+    except ImportError as exc:
+        raise RuntimeError("Pillow is required for the default creator portrait composite.") from exc
+    with Image.open(base_path) as image:
+        if image.height >= image.width:
+            return "3x4"
+        ratio = image.width / image.height
+        return "16x10" if abs(ratio - 1.6) < abs(ratio - (4 / 3)) else "4x3"
+
+
 def image_to_data_uri(path: Path) -> str:
     mime = mimetypes.guess_type(str(path))[0] or "image/png"
     data = base64.b64encode(path.read_bytes()).decode("ascii")
@@ -579,6 +801,7 @@ def build_analysis_messages(
     args: argparse.Namespace,
     frames: list[dict[str, str]],
     logos: list[dict[str, str]],
+    creator_portrait_overlay: dict[str, Any] | None,
     skill_rules: str,
     subtitle_text: str,
 ) -> list[dict[str, Any]]:
@@ -586,6 +809,7 @@ def build_analysis_messages(
         f"- {item['label']}: {item['path']} timestamp={item.get('timestamp', '')}" for item in frames
     )
     logo_list = "\n".join(f"- {item['label']}: {item['path']}" for item in logos) or "None"
+    portrait_plan = creator_portrait_plan(args.default_creator_portrait, creator_portrait_overlay)
     subtitle_instruction = (
         "A short external subtitle is allowed when it strengthens the cover; keep it clearly smaller "
         "than the main title and aligned on the same editorial grid."
@@ -593,18 +817,37 @@ def build_analysis_messages(
         else "Do not add an external subtitle; keep the outside cover text limited to the main title and the small product mark."
     )
     system_text = (
-        "You are an expert cover art director for Xiaohongshu AI tool tutorial videos. "
+        f"You are an expert cover art director for {CREATOR_NAME}'s Xiaohongshu and Bilibili AI tool tutorial videos. "
         "Use the supplied oil-cover skill rules as the design spec. "
         "Treat supplied screenshots as evidence sources, not as full images to copy. "
         "Before writing prompts, decide the one-glance subject: what result should be visible "
         "within 0.5 seconds in a phone feed. Make that subject the dominant visual evidence, "
         "and make every other UI element serve or yield to it. "
         "Extract the few UI signals that explain the topic, rebuild them into a clean cover-ready screen, "
-        "and remove irrelevant navigation, long transcripts, old subtitles, avatars, paths, timestamps, and tiny noisy text. "
+        "and remove irrelevant navigation, long transcripts, old subtitles, random avatars, paths, timestamps, and tiny noisy text. "
+        +
+        (
+            "The generated base must stay completely person-free. Reserve the deterministic lower-right portrait overlay-safe "
+            "area described below so the title, logo, labels, and primary evidence remain unobstructed. Do not draw the creator, "
+            "a silhouette, a placeholder, an avatar, a webcam bubble, a mascot, or any other person. A local code step adds the "
+            "single supplied transparent paper-cut creator portrait after generation. "
+            if args.default_creator_portrait
+            else "This cover must stay completely person-free: do not add any human, face, creator portrait, avatar, webcam bubble, mascot, or character. "
+        )
+        +
         "The final image generator is Zenmux openai/gpt-image-2. The local script only extracts frames, "
-        "copies files, saves prompts, and calls Zenmux APIs; it never composes, crops, adds text, pastes "
-        "logos, or repairs the cover locally. The image model receives the selected frame, and the product "
-        "logo if any, as edit references. "
+        "copies files, saves prompts, calls Zenmux APIs"
+        +
+        (
+            ", and performs one permitted deterministic post-step: alpha-compositing the fixed creator portrait overlay. "
+            "The image model receives only the selected frame and product logo references; the creator portrait is never "
+            "uploaded as a generation reference. "
+            if args.default_creator_portrait
+            else ". No portrait post-processing is performed for this explicitly person-free cover. "
+        )
+        +
+        "It never adds text, pastes Logos, changes layout, crops the generated cover, or performs visual repairs locally. "
+        +
         "IMPORTANT: each prompt you write IS the final and complete instruction sent to the image model; "
         "no extra rules are appended afterwards. So make every prompt fully self-contained and internally "
         "consistent. State the screenshot distillation, the visual-communication priority, the screen crop, "
@@ -612,8 +855,15 @@ def build_analysis_messages(
         "same instruction in different words, do not give conflicting numbers or directions, and never rely "
         "on post-processing to fix the prompt. Prefer a tight, unambiguous prompt over a long padded one. "
         "Visual quality bar, fold these naturally into the one prompt without padding: "
-        "(1) name the actual sampled hues for the background glow and the title accent, for example warm "
-        "orange, cool blue, or lime green, instead of vaguely saying 'sampled from the image'; "
+        "(1) design an intentional colour scheme with real atmosphere: a clean light base (white, light "
+        "gray, or a very pale tinted paper) carrying a soft pastel colour atmosphere of 1-3 neighbouring "
+        "hues that blend gently at the edges/corners/behind the screen — name the hues explicitly, for "
+        "example dusty periwinkle + soft pink, or cream + pale gold. Sample hues from the frame or logo "
+        "but soften them to a creamy/dusty pastel; never the raw high-saturation UI colour (no acid lime, "
+        "no neon green, no electric blue, no fluorescent blocks) and never a full-spectrum rainbow. The "
+        "atmosphere must be clearly visible — a nearly colorless gray canvas reads as unfinished — yet "
+        "stay soft and airy. Pair it with one pastel keyword chip on the title whose hue echoes the "
+        "atmosphere; "
         "(2) make the screen/browser object intentionally overflow and get clipped by at least one canvas "
         "edge, showing only about 80%-95% of it while keeping a visible top-left window edge, for a premium "
         "editorial close-up with real depth, never a small fully-centered complete screenshot; "
@@ -624,14 +874,21 @@ def build_analysis_messages(
         "space (about 5-12 degrees) as if seen slightly from one side, with one edge nearer the viewer — for "
         "gentle parallax depth and dimensionality; this intentionally overrides any 'front-facing flat / "
         "0-degree rotation / no diagonal edge' default in the rules; keep all UI text readable and avoid "
-        "extreme skew, fisheye, warping, or heavy rotation. "
+        "extreme skew, fisheye, warping, or heavy rotation; "
+        "(6) make the main title unmistakably large — the covers live in phone and desktop feeds: in the 3:4 portrait "
+        "prompt each title line spans about 90%-96% of the safe-area width with a cap height around 8%-12% "
+        "of the canvas height; in the 4:3 landscape prompt each title line's cap height is about 11%-15% of "
+        "the canvas height with 3-6 characters per line; in the 16:10 Bilibili prompt use the same cap-height "
+        "range and keep the title as the first anchor while using the extra width for larger screen evidence; "
+        "when unsure, go bigger and break the title into "
+        "two short lines instead of shrinking it. "
         "Return strict JSON only."
     )
     user_text = f"""
 Task:
-Create a complete external Zenmux workflow plan for an oil-cover style Xiaohongshu cover.
+Create a complete external Zenmux workflow plan for an oil-cover style Xiaohongshu and Bilibili cover set.
 
-Known title:
+Known title (already distilled by the operator; treat as the final cover headline):
 {args.title or "None"}
 
 Extra topic/context:
@@ -643,6 +900,9 @@ Candidate frames:
 Logo/reference images:
 {logo_list}
 
+Deterministic creator portrait overlay plan (not a generation reference image):
+{json.dumps(portrait_plan, ensure_ascii=False, indent=2)}
+
 Subtitle/transcript/script excerpt:
 {subtitle_text or "None"}
 
@@ -652,11 +912,6 @@ Oil-cover skill rules:
 Output strict JSON with this schema:
 {{
   "task_type": "video_cover or image_cover",
-  "first_frame_judgement": {{
-    "type": "real_interface/result_page/title_card/intro/plain_text/existing_cover/unknown",
-    "usable_as_main_visual": true,
-    "reason": ""
-  }},
   "selected_frame": {{
     "label": "",
     "path": "",
@@ -681,6 +936,13 @@ Output strict JSON with this schema:
   "logo_plan": {{
     "outside_logo_or_mark": "",
     "source": "",
+    "reason": ""
+  }},
+  "creator_portrait_plan": {{
+    "enabled": {str(bool(args.default_creator_portrait)).lower()},
+    "mode": "{'local_code_composite' if args.default_creator_portrait else 'none'}",
+    "placement": "{'lower-right, right-edge anchored, bottom-clipped' if args.default_creator_portrait else 'none'}",
+    "reserve_base_area": {str(bool(args.default_creator_portrait)).lower()},
     "reason": ""
   }},
   "color_plan": {{
@@ -712,24 +974,32 @@ Output strict JSON with this schema:
     "4x3": {{
       "size": "{args.landscape_size}",
       "prompt": ""
+    }},
+    "16x10": {{
+      "size": "{args.bilibili_size}",
+      "prompt": ""
     }}
   }},
   "quality_checklist": []
 }}
 
 Important:
-- Choosing selected_frame is the single biggest quality lever. Prefer a sharp, well-composed frame where the key UI, result, or action is fully visible, clean, and large. Reject blurry or motion-blurred frames, fade/transition frames, near-empty intros, loading states, frames that are mostly plain text, and frames where the main evidence is occluded, cropped, or tiny. If several frames are similar, pick the cleanest and most readable; list the next best ones in backup_frames.
-- The two prompts must explicitly mention exact 3:4 and exact 4:3 respectively.
+- When a known title is provided, it is the final cover headline already distilled by the operator from the video content: use it as title.main essentially verbatim — you own only line breaks, typographic emphasis, and dropping a leading filler word if one slipped in. Do not rewrite it, soften it, or revert it to a generic video-title phrasing. Only when the known title is None should you distill title.main yourself from the subtitle/transcript, preferring the strongest concrete verdict in the speaker's own words.
+- Choosing selected_frame is the single biggest quality lever. The candidate frames have already been locally prefiltered for technical quality (sharpness, brightness, content) and spread across the video, so they should all be reasonably crisp — spend your judgement on WHICH one best represents the subject: prefer the frame that most clearly shows the named tool/product actually in use (its real interface, panel, result, or action), fully visible, clean, and large. Still reject any that slipped through: blurry/motion-blurred, fade/transition, near-empty intros, loading states, mostly-plain-text, or frames where the main evidence is occluded, cropped, or tiny. If several frames are similar, pick the cleanest and most on-topic; list the next best ones in backup_frames.
+- The three prompts must explicitly mention exact 3:4, exact 4:3, and exact 16:10 respectively.
 - The prompts must include the mandatory visible background sentence from the rules.
+- The color_plan must follow the cover colour system from the rules: a clean light base plus a soft pastel atmosphere of 1-3 neighbouring hues, and one keyword-chip accent echoing the atmosphere. Write gradient_source as the named pastel hues (e.g. "dusty periwinkle + soft pink") and accent as the chip colour — creamy/dusty versions, never the raw saturated UI colour, never neon or full-spectrum rainbow.
 - The prompts must tell gpt-image-2 to create one complete final cover in one image.
-- The prompts must preserve real tutorial evidence from the selected frame and remove people/webcam/avatar/subtitles.
+- The prompts must preserve real tutorial evidence from the selected frame and remove unrelated people/webcam/avatar/subtitles from the source screen and rebuilt UI.
+- {"The prompts must keep the generated base person-free and reserve the lower-right portrait overlay-safe area. For 3:4 reserve x=48%-100%, y=56%-100%; for 4:3 reserve x=60%-100%, y=37%-100%; for 16:10 reserve x=64%-100%, y=37%-100%. Put no title, logo, label, or primary evidence there. Continue only background and noncritical screen detail under it; never draw a placeholder or portrait. The local script will composite the fixed transparent paper-cut portrait after generation." if args.default_creator_portrait else "The prompts must not add a creator portrait. Keep the final cover completely person-free: no human face, no avatar, no webcam bubble, no mascot, no character, and no portrait thumbnail."}
+- {"Do not request or depend on the creator portrait as a generation reference. The portrait is applied later at a fixed layout: 3:4 = 55% canvas width, 6% past the right edge, top 58%; 4:3 = 38% canvas width, 3% past the right edge, top 40%; 16:10 = 34% canvas width, 3% past the right edge, top 40%; natural bottom/right clipping is intentional." if args.default_creator_portrait else "Use software UI evidence, product logo, workflow chips, cursor marks, panels, and text hierarchy as the personal-brand signal instead of any person or face."}
 - The prompts must not copy the selected screenshot as-is. They must specify a screenshot distillation plan: keep only 2-3 essential UI signals, remove noisy sidebars/long text/unrelated details, and rebuild the screen area as a clean real-feeling UI.
 - The prompts must include a visual communication plan: the one-glance subject, the primary evidence, the maximum size of supporting evidence, and what to delete/crop if the primary evidence becomes too small.
 - If the primary evidence is a row/grid/gallery/list of result cards, cover thumbnails, generated images, or comparison examples, the prompts must make those results large and readable as the dominant gallery. Do not shrink them into a faithful full-workspace screenshot.
 - The prompts must include a title decoration plan: the title area cannot be plain text only. Add 1-2 tasteful, content-related title accents such as a subtle keyword highlight, thin underline, small workflow label, cursor mark, bracket, or UI state chip derived from the current title, screenshot, subtitle, topic, or product identity.
 - The prompts must not ask for local post-processing.
 - {subtitle_instruction}
-- For the 4:3 horizontal prompt, the main title must be the first visual anchor, while the selected screen evidence remains large and readable.
+- For the 4:3 and 16:10 horizontal prompts, the main title must be the first visual anchor, while the selected screen evidence remains large and readable. All prompts must state the title size explicitly (portrait: each line spans ~90%-96% of the safe-area width; landscape: cap height ~11%-15% of canvas height) so the title cannot come out small.
 """
     content: list[dict[str, Any]] = [{"type": "text", "text": user_text}]
     for item in frames:
@@ -842,6 +1112,7 @@ def run_analysis(
             "prompts": {
                 "3x4": {"size": args.portrait_size, "prompt": ""},
                 "4x3": {"size": args.landscape_size, "prompt": ""},
+                "16x10": {"size": args.bilibili_size, "prompt": ""},
             },
             "cover_direction_markdown": "Dry run only. No API call was made.",
         }
@@ -895,9 +1166,19 @@ def redact_payload(payload: Any) -> Any:
 
 
 def requested_aspects(args: argparse.Namespace) -> tuple[str, ...]:
+    if args.aspect == "all":
+        return ("3x4", "4x3", "16x10")
     if args.aspect == "both":
         return ("3x4", "4x3")
     return (args.aspect,)
+
+
+def aspect_size(args: argparse.Namespace, aspect_key: str) -> str:
+    return {
+        "3x4": args.portrait_size,
+        "4x3": args.landscape_size,
+        "16x10": args.bilibili_size,
+    }[aspect_key]
 
 
 def strip_external_subtitle(prompt: str) -> str:
@@ -944,7 +1225,11 @@ def hard_rule_backfill(
     analysis = analysis or {}
     notes: list[str] = []
     low = prompt.lower()
-    aspect_phrase = "3:4" if aspect_key == "3x4" else "4:3"
+    aspect_phrase = {
+        "3x4": "3:4",
+        "4x3": "4:3",
+        "16x10": "16:10",
+    }[aspect_key]
 
     if aspect_phrase not in prompt:
         prompt += f" Output exactly one complete {aspect_phrase} cover in a single image."
@@ -952,8 +1237,11 @@ def hard_rule_backfill(
 
     if "grid" not in low or "background" not in low:
         prompt += (
-            " Mandatory visible background: full-canvas clean base, visible fine grid, restrained "
-            "low-opacity local gradient glow sampled from the selected image, very light grain."
+            " Mandatory visible background: full-canvas clean base, visible fine grid, a soft pastel "
+            "colour atmosphere of 1-3 neighbouring hues (sampled from the selected image, softened to a "
+            "creamy/dusty pastel) glowing gently from the edges or corners, very light grain; the "
+            "atmosphere must be clearly visible yet soft — no neon or acid hues, no full-spectrum "
+            "rainbow, no plain colourless canvas."
         )
         notes.append(f"{aspect_key}: backfilled mandatory background.")
 
@@ -967,14 +1255,28 @@ def hard_rule_backfill(
         if gradient_source or accent:
             detail = gradient_source or "the dominant tones of the selected image"
             tail = f"; title accent uses {accent}" if accent else ""
-            prompt += f" Colour sampling: draw the background glow from specific hues — {detail}{tail}."
+            prompt += (
+                f" Colour sampling: build the background atmosphere from {detail}{tail}; soften every hue "
+                "to a creamy/dusty pastel before use."
+            )
             notes.append(f"{aspect_key}: backfilled specific colour sampling.")
         else:
             prompt += (
-                " Colour sampling: name and use the actual dominant hues of the selected screen for the "
-                "background glow and title accent, not a flat gray wash."
+                " Colour sampling: sample 1-3 neighbouring hues of the selected screen for the background "
+                "atmosphere and title accent, softened to creamy/dusty pastels."
             )
             notes.append(f"{aspect_key}: backfilled colour-hue instruction.")
+
+    # Colour discipline: a visible pastel atmosphere — neither neon nor colourless.
+    if not any(k in low for k in ("pastel", "creamy", "dusty", "muted", "desaturat", "soft pink",
+                                  "pale gold", "periwinkle")):
+        prompt += (
+            " Colour discipline: the background must carry a clearly visible soft pastel atmosphere of 1-3 "
+            "neighbouring hues blending gently at the edges or behind the screen, with one pastel keyword "
+            "chip echoing it — never neon or acid hues, fluorescent blocks, or a full-spectrum rainbow; but "
+            "never a plain colourless gray canvas either."
+        )
+        notes.append(f"{aspect_key}: backfilled colour discipline.")
 
     # Screen depth crop: overflow + edge clip for the premium close-up (立体感).
     if not any(k in low for k in ("overflow", "clipped by", "cropped by", "clip the", "crop the",
@@ -1006,13 +1308,6 @@ def hard_rule_backfill(
         prompt += " Add a soft contact shadow close to `0 4px 12px rgba(30,35,40,0.06)` under the screen for grounded depth."
         notes.append(f"{aspect_key}: backfilled contact shadow.")
 
-    if "person" not in low and "avatar" not in low and "webcam" not in low and "face" not in low:
-        prompt += (
-            " Remove every human face, portrait, avatar, and webcam bubble, including inside rebuilt "
-            "UI cards and thumbnails; keep the cover people-free."
-        )
-        notes.append(f"{aspect_key}: backfilled no-person rule.")
-
     logo_guard = product_logo_guard(logos)
     if logo_guard and "Product identity guard:" not in prompt and "logo reference" not in low:
         prompt += logo_guard
@@ -1031,13 +1326,14 @@ def apply_script_guards(
 
     Unlike the legacy link, this does NOT append distillation / visual / crop /
     decoration / layout guards onto every prompt. Those are the model's job now.
-    We only enforce non-negotiables (exact aspect, mandatory background, no
-    people, real logo) when the prompt omitted them, keeping it tight and
-    self-consistent.
+    We only enforce non-negotiables such as exact aspect, mandatory background,
+    depth cues, real logo, and the deterministic creator-overlay safe area when
+    the prompt omitted them.
     """
     if not isinstance(analysis, dict):
         return analysis
     logos = logos or []
+    analysis["creator_portrait_plan"] = creator_portrait_plan(args.default_creator_portrait)
 
     title = analysis.setdefault("title", {})
     if isinstance(title, dict) and not args.allow_subtitle:
@@ -1067,6 +1363,14 @@ def apply_script_guards(
         prompt, notes = hard_rule_backfill(prompt, key, logos, analysis)
         postprocess_notes.extend(notes)
 
+        if (
+            args.default_creator_portrait
+            and key in CREATOR_PORTRAIT_LAYOUTS
+            and "Local portrait composite guard:" not in prompt
+        ):
+            prompt += creator_portrait_prompt_guard(key)
+            postprocess_notes.append(f"{key}: reserved deterministic creator portrait overlay area.")
+
         item["prompt"] = prompt
 
     if postprocess_notes:
@@ -1082,7 +1386,13 @@ def apply_script_guards(
     return analysis
 
 
-def write_cover_plan(run_dir: Path, analysis: dict[str, Any], frames: list[dict[str, str]], logos: list[dict[str, str]]) -> None:
+def write_cover_plan(
+    run_dir: Path,
+    analysis: dict[str, Any],
+    frames: list[dict[str, str]],
+    logos: list[dict[str, str]],
+    creator_portrait_overlay: dict[str, Any] | None,
+) -> None:
     lines = [
         "# Oil Cover Zenmux Test",
         "",
@@ -1097,6 +1407,10 @@ def write_cover_plan(run_dir: Path, analysis: dict[str, Any], frames: list[dict[
         "## Title",
         "",
         json.dumps(analysis.get("title", {}), ensure_ascii=False, indent=2),
+        "",
+        "## Creator Portrait Plan",
+        "",
+        json.dumps(analysis.get("creator_portrait_plan", {}), ensure_ascii=False, indent=2),
         "",
         "## Screenshot Distillation",
         "",
@@ -1113,6 +1427,9 @@ def write_cover_plan(run_dir: Path, analysis: dict[str, Any], frames: list[dict[
         "",
         "Logos:",
         *([f"- {item['label']}: {item['path']}" for item in logos] or ["- None"]),
+        "",
+        "Creator Portrait Local Overlay (not sent to the image model):",
+        json.dumps(creator_portrait_overlay or {"enabled": False}, ensure_ascii=False, indent=2),
     ]
     (run_dir / "cover_plan.md").write_text("\n".join(lines), encoding="utf-8")
 
@@ -1125,11 +1442,13 @@ def prompt_sidecar_text(
     refs: list[Path],
     result_path: str = "PENDING",
     status: str = "PENDING",
+    portrait_composite: dict[str, Any] | None = None,
 ) -> str:
     selected = analysis.get("selected_frame", {})
+    composite_text = json.dumps(portrait_composite, ensure_ascii=False, indent=2) if portrait_composite else "None"
     return f"""# Oil Cover Prompt Sidecar
 
-Use: Xiaohongshu oil-cover external Zenmux test
+Use: Xiaohongshu and Bilibili oil-cover external Zenmux workflow
 Aspect: {aspect_key}
 Size: {size}
 Selected frame: {selected.get("label", "")} {selected.get("path", "")}
@@ -1138,6 +1457,8 @@ Reference images:
 
 Generation result: {result_path}
 Status: {status}
+Creator portrait composite:
+{composite_text}
 
 ## Final Prompt
 
@@ -1156,7 +1477,7 @@ def save_prompt_sidecars(
     for key in requested_aspects(args):
         item = prompts.get(key, {})
         prompt = item.get("prompt", "")
-        size = args.portrait_size if key == "3x4" else args.landscape_size
+        size = aspect_size(args, key)
         sidecar = run_dir / f"{key}.prompt.md"
         sidecar.write_text(
             prompt_sidecar_text(key, size, prompt, analysis, refs),
@@ -1209,7 +1530,11 @@ def _normalize_label(value: Any) -> str:
     return re.sub(r"\s+", "", str(value or "")).lower()
 
 
-def selected_reference_paths(analysis: dict[str, Any], frames: list[dict[str, str]], logos: list[dict[str, str]]) -> list[Path]:
+def selected_reference_paths(
+    analysis: dict[str, Any],
+    frames: list[dict[str, str]],
+    logos: list[dict[str, str]],
+) -> list[Path]:
     selected: list[Path] = []
 
     def match(label: str) -> Path | None:
@@ -1232,9 +1557,9 @@ def selected_reference_paths(analysis: dict[str, Any], frames: list[dict[str, st
                     break
 
     if chosen is None and frames:
-        # Do not silently fall back to first_frame (often a title/intro card).
-        non_first = [it for it in frames if it.get("label") != "first_frame"]
-        fallback = non_first[0] if non_first else frames[0]
+        # Defensive guard for a malformed model label: every candidate is already a
+        # prefiltered, technically-clean frame, so the first one is a safe pick.
+        fallback = frames[0]
         chosen = Path(fallback["path"])
         print(
             f"Warning: selected_frame label '{requested}' did not match any extracted "
@@ -1265,7 +1590,7 @@ def generate_images(
     for key in requested_aspects(args):
         item = prompts.get(key, {})
         prompt = item.get("prompt", "").strip()
-        size = args.portrait_size if key == "3x4" else args.landscape_size
+        size = aspect_size(args, key)
         if not prompt:
             print(f"Skip {key}: empty prompt")
             continue
@@ -1329,7 +1654,7 @@ def generate_images(
                 sidecars[key].write_text(
                     prompt_sidecar_text(
                         key,
-                        args.portrait_size if key == "3x4" else args.landscape_size,
+                        aspect_size(args, key),
                         prompts.get(key, {}).get("prompt", ""),
                         analysis,
                         refs,
@@ -1341,7 +1666,7 @@ def generate_images(
                 print(f"Error: {key} generation failed: {exc}", file=sys.stderr)
                 failures.append(key)
 
-    # A single failed aspect must not discard the other one that already succeeded.
+    # A single failed aspect must not discard the others that already succeeded.
     if failures and not results:
         raise RuntimeError(f"All image generations failed: {failures}")
     if failures:
@@ -1352,8 +1677,79 @@ def generate_images(
     return results
 
 
+def apply_creator_portrait_composites(
+    args: argparse.Namespace,
+    work_dir: Path,
+    analysis: dict[str, Any],
+    refs: list[Path],
+    sidecars: dict[str, Path],
+    results: dict[str, str],
+    creator_portrait_overlay: dict[str, Any] | None,
+) -> dict[str, Any]:
+    if not args.default_creator_portrait or not results:
+        return {}
+    if not creator_portrait_overlay:
+        raise RuntimeError("default creator portrait is enabled but no overlay asset was prepared")
+
+    records: dict[str, Any] = {}
+    overlay_path = Path(str(creator_portrait_overlay["path"]))
+    prompts = analysis.get("prompts", {})
+    for key, output_value in results.items():
+        output_path = Path(output_value)
+        base_path = work_dir / f"{key}.generated-base.png"
+        shutil.copy2(output_path, base_path)
+        record = composite_creator_portrait(base_path, output_path, overlay_path, key)
+        records[key] = record
+
+        prompt = str((prompts.get(key, {}) or {}).get("prompt", ""))
+        size = aspect_size(args, key)
+        sidecars[key].write_text(
+            prompt_sidecar_text(
+                key,
+                size,
+                prompt,
+                analysis,
+                refs,
+                str(output_path),
+                "GENERATED_AND_CODE_COMPOSITED",
+                record,
+            ),
+            encoding="utf-8",
+        )
+
+    (work_dir / "portrait_composite.json").write_text(
+        json.dumps(records, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    return records
+
+
 def main() -> None:
     args = parse_args()
+    if args.composite_base:
+        base_path = args.composite_base.expanduser().resolve()
+        if not base_path.exists():
+            fail(f"composite base image does not exist: {base_path}")
+        configured_path = DEFAULT_CREATOR_PORTRAIT_OVERLAY.get("path")
+        if not configured_path:
+            fail(
+                "creator portrait compositing requires creator_portrait.path "
+                f"in {USER_CONFIG_FILE}"
+            )
+        overlay_path = Path(configured_path)
+        if not overlay_path.exists():
+            fail(f"default creator portrait overlay is missing: {overlay_path}")
+        aspect_key = args.composite_aspect or infer_creator_portrait_aspect(base_path)
+        output_path = (
+            args.composite_output.expanduser().resolve()
+            if args.composite_output
+            else base_path.with_name(f"{base_path.stem}_with_creator.png")
+        )
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        record = composite_creator_portrait(base_path, output_path, overlay_path, aspect_key)
+        print(json.dumps(record, ensure_ascii=False, indent=2))
+        return
+
     api_key = api_key_from_args(args)
 
     if args.video:
@@ -1378,8 +1774,9 @@ def main() -> None:
 
     skill_rules = read_text(args.rules_file)
     subtitle_text = read_text(args.subtitle, limit=20000)
-    frames = extract_video_frames(args, work_dir, api_key) if args.video else copy_input_images(args, work_dir)
+    frames = extract_video_frames(args, work_dir) if args.video else copy_input_images(args, work_dir)
     logos = copy_logos(args, work_dir, subtitle_text)
+    creator_portrait_overlay = prepare_creator_portrait_overlay(work_dir) if args.default_creator_portrait else None
 
     manifest = {
         "created_at": datetime.now().isoformat(timespec="seconds"),
@@ -1393,31 +1790,45 @@ def main() -> None:
         "subtitle": str(args.subtitle) if args.subtitle else "",
         "frames": frames,
         "logos": logos,
+        "creator_portrait_overlay": creator_portrait_overlay,
         "dry_run": args.dry_run,
         "skip_generate": args.skip_generate,
         "aspect": args.aspect,
         "allow_subtitle": args.allow_subtitle,
+        "default_creator_portrait": args.default_creator_portrait,
     }
     (work_dir / "manifest.json").write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
 
-    messages = build_analysis_messages(args, frames, logos, skill_rules, subtitle_text)
+    messages = build_analysis_messages(args, frames, logos, creator_portrait_overlay, skill_rules, subtitle_text)
     analysis = run_analysis(args, api_key, messages, work_dir)
     analysis = apply_script_guards(args, analysis, work_dir, logos)
-    write_cover_plan(work_dir, analysis, frames, logos)
+    write_cover_plan(work_dir, analysis, frames, logos, creator_portrait_overlay)
 
     refs = selected_reference_paths(analysis, frames, logos)
     sidecars = save_prompt_sidecars(args, work_dir, analysis, refs)
     results: dict[str, str] = {}
+    portrait_composites: dict[str, Any] = {}
     if not args.skip_generate and not args.dry_run:
         results = generate_images(args, api_key, work_dir, base_dir, stem, analysis, refs, sidecars)
+        portrait_composites = apply_creator_portrait_composites(
+            args,
+            work_dir,
+            analysis,
+            refs,
+            sidecars,
+            results,
+            creator_portrait_overlay,
+        )
 
     final_manifest = {
         **manifest,
         "analysis_path": str(work_dir / "analysis.json"),
         "cover_plan_path": str(work_dir / "cover_plan.md"),
+        "creator_portrait_overlay": creator_portrait_overlay,
+        "portrait_composites": portrait_composites,
         "prompt_sidecars": {key: str(value) for key, value in sidecars.items()},
         "generated_images": results,
     }

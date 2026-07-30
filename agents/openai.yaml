@@ -1,4 +1,4 @@
 interface:
   display_name: "oil-cover"
-  short_description: "小红书 AI 工具实操封面生成（作者 oil 欧呦）"
-  default_prompt: "使用 oil-cover，为这条小红书 AI 工具内容设计并生成封面。"
+  short_description: "小红书 AI 工具视频封面生成、真实证据编排与双画幅交付"
+  default_prompt: "使用 $oil-cover，根据这条视频生成 3:4 和 4:3 两版封面。"
