@@ -19,7 +19,7 @@
 
 - **视频选帧**：把整段视频压成小 clip 交给多模态模型看完全片、按内容挑出最适合做封面的一帧（带理由），比盲采等距帧准得多。
 - **完整视觉规范**：`references/cover-rules.md` 覆盖构图、背景层、字体标题、点缀、自动质检和提示词骨架。
-- **默认三画幅**：并行出小红书 `3:4` 竖版、`4:3` 横版和 B 站 `16:10` 横版。
+- **默认三画幅**：并行出小红书 `3:4` 竖版、B 站首页主封面 `4:3` 横版和个人空间伴随版 `16:9` 横版。
 - **产品 Logo 自动匹配**：内置 Claude / Codex / Cursor / Gemini / GitHub 等常用 AI 产品 Logo。
 
 ## 两种执行模式
@@ -66,7 +66,7 @@ python3 ~/.claude/skills/oil-cover/scripts/generate_oil_cover.py \
   --title "<标题>"
 ```
 
-默认并行出 `3:4` + `4:3` + `16:10`。完整参数（取帧策略、`--dry-run`、`--skip-generate` 等）见 [`SKILL.md`](SKILL.md)。
+默认并行出 `3:4` + `4:3` + `16:9`。完整参数（取帧策略、`--dry-run`、`--skip-generate` 等）见 [`SKILL.md`](SKILL.md)。
 
 ### 配置 ZenMux key（仅脚本模式需要）
 

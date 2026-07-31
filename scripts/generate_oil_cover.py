@@ -105,11 +105,11 @@ CREATOR_PORTRAIT_LAYOUTS = {
         "right_ratio": -0.03,
         "safe_area": "x=60%-100%, y=37%-100%",
     },
-    "16x10": {
-        "width_ratio": 0.34,
+    "16x9": {
+        "width_ratio": 0.32,
         "top_ratio": 0.40,
-        "right_ratio": -0.03,
-        "safe_area": "x=64%-100%, y=37%-100%",
+        "right_ratio": 0.02,
+        "safe_area": "x=62%-100%, y=37%-100%",
     },
 }
 RETRYABLE_HTTP_CODES = {408, 429, 500, 502, 503, 504}
@@ -177,7 +177,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--composite-aspect",
-        choices=("3x4", "4x3", "16x10"),
+        choices=("3x4", "4x3", "16x9"),
         help="Layout for --composite-base. If omitted, infer it from the base dimensions.",
     )
     parser.add_argument("--title", default="", help="Known video title or desired topic title.")
@@ -226,8 +226,8 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--bilibili-size",
-        default="1280x800",
-        help="Exact 16:10 Bilibili size for the image API. Zenmux requires width and height divisible by 16.",
+        default="1280x720",
+        help="Exact 16:9 Bilibili personal-space companion size for the image API. The default Bilibili upload source remains the 4:3 cover. Zenmux requires width and height divisible by 16.",
     )
     parser.add_argument(
         "--generation-only",
@@ -242,7 +242,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--aspect",
-        choices=("all", "both", "3x4", "4x3", "16x10"),
+        choices=("all", "both", "3x4", "4x3", "16x9"),
         default="all",
         help="Which cover aspect to generate. Default: all three in parallel. Legacy 'both' keeps 3x4 + 4x3.",
     )
@@ -788,7 +788,7 @@ def infer_creator_portrait_aspect(base_path: Path) -> str:
         if image.height >= image.width:
             return "3x4"
         ratio = image.width / image.height
-        return "16x10" if abs(ratio - 1.6) < abs(ratio - (4 / 3)) else "4x3"
+        return "16x9" if abs(ratio - (16 / 9)) < abs(ratio - (4 / 3)) else "4x3"
 
 
 def image_to_data_uri(path: Path) -> str:
@@ -878,8 +878,9 @@ def build_analysis_messages(
         "(6) make the main title unmistakably large — the covers live in phone and desktop feeds: in the 3:4 portrait "
         "prompt each title line spans about 90%-96% of the safe-area width with a cap height around 8%-12% "
         "of the canvas height; in the 4:3 landscape prompt each title line's cap height is about 11%-15% of "
-        "the canvas height with 3-6 characters per line; in the 16:10 Bilibili prompt use the same cap-height "
-        "range and keep the title as the first anchor while using the extra width for larger screen evidence; "
+        "the canvas height with 3-6 characters per line; treat the 4:3 cover as the Bilibili homepage primary "
+        "and the 16:9 cover as a separate personal-space companion; in the 16:9 prompt use the same cap-height "
+        "range and keep the title as the first anchor; "
         "when unsure, go bigger and break the title into "
         "two short lines instead of shrinking it. "
         "Return strict JSON only."
@@ -975,7 +976,7 @@ Output strict JSON with this schema:
       "size": "{args.landscape_size}",
       "prompt": ""
     }},
-    "16x10": {{
+    "16x9": {{
       "size": "{args.bilibili_size}",
       "prompt": ""
     }}
@@ -986,20 +987,20 @@ Output strict JSON with this schema:
 Important:
 - When a known title is provided, it is the final cover headline already distilled by the operator from the video content: use it as title.main essentially verbatim — you own only line breaks, typographic emphasis, and dropping a leading filler word if one slipped in. Do not rewrite it, soften it, or revert it to a generic video-title phrasing. Only when the known title is None should you distill title.main yourself from the subtitle/transcript, preferring the strongest concrete verdict in the speaker's own words.
 - Choosing selected_frame is the single biggest quality lever. The candidate frames have already been locally prefiltered for technical quality (sharpness, brightness, content) and spread across the video, so they should all be reasonably crisp — spend your judgement on WHICH one best represents the subject: prefer the frame that most clearly shows the named tool/product actually in use (its real interface, panel, result, or action), fully visible, clean, and large. Still reject any that slipped through: blurry/motion-blurred, fade/transition, near-empty intros, loading states, mostly-plain-text, or frames where the main evidence is occluded, cropped, or tiny. If several frames are similar, pick the cleanest and most on-topic; list the next best ones in backup_frames.
-- The three prompts must explicitly mention exact 3:4, exact 4:3, and exact 16:10 respectively.
+- The three prompts must explicitly mention exact 3:4, exact 4:3, and exact 16:9 respectively.
 - The prompts must include the mandatory visible background sentence from the rules.
 - The color_plan must follow the cover colour system from the rules: a clean light base plus a soft pastel atmosphere of 1-3 neighbouring hues, and one keyword-chip accent echoing the atmosphere. Write gradient_source as the named pastel hues (e.g. "dusty periwinkle + soft pink") and accent as the chip colour — creamy/dusty versions, never the raw saturated UI colour, never neon or full-spectrum rainbow.
 - The prompts must tell gpt-image-2 to create one complete final cover in one image.
 - The prompts must preserve real tutorial evidence from the selected frame and remove unrelated people/webcam/avatar/subtitles from the source screen and rebuilt UI.
-- {"The prompts must keep the generated base person-free and reserve the lower-right portrait overlay-safe area. For 3:4 reserve x=48%-100%, y=56%-100%; for 4:3 reserve x=60%-100%, y=37%-100%; for 16:10 reserve x=64%-100%, y=37%-100%. Put no title, logo, label, or primary evidence there. Continue only background and noncritical screen detail under it; never draw a placeholder or portrait. The local script will composite the fixed transparent paper-cut portrait after generation." if args.default_creator_portrait else "The prompts must not add a creator portrait. Keep the final cover completely person-free: no human face, no avatar, no webcam bubble, no mascot, no character, and no portrait thumbnail."}
-- {"Do not request or depend on the creator portrait as a generation reference. The portrait is applied later at a fixed layout: 3:4 = 55% canvas width, 6% past the right edge, top 58%; 4:3 = 38% canvas width, 3% past the right edge, top 40%; 16:10 = 34% canvas width, 3% past the right edge, top 40%; natural bottom/right clipping is intentional." if args.default_creator_portrait else "Use software UI evidence, product logo, workflow chips, cursor marks, panels, and text hierarchy as the personal-brand signal instead of any person or face."}
+- {"The prompts must keep the generated base person-free and reserve the lower-right portrait overlay-safe area. For 3:4 reserve x=48%-100%, y=56%-100%; for 4:3 reserve x=60%-100%, y=37%-100%; for 16:9 reserve x=62%-100%, y=37%-100%. Put no title, logo, label, or primary evidence there. Continue only background and noncritical screen detail under it; never draw a placeholder or portrait. The local script will composite the fixed transparent paper-cut portrait after generation." if args.default_creator_portrait else "The prompts must not add a creator portrait. Keep the final cover completely person-free: no human face, no avatar, no webcam bubble, no mascot, no character, and no portrait thumbnail."}
+- {"Do not request or depend on the creator portrait as a generation reference. The portrait is applied later at a fixed layout: 3:4 = 55% canvas width, 6% past the right edge, top 58%; 4:3 = 38% canvas width, 3% past the right edge, top 40%; 16:9 = 32% canvas width, 2% inside the right edge, top 40%." if args.default_creator_portrait else "Use software UI evidence, product logo, workflow chips, cursor marks, panels, and text hierarchy as the personal-brand signal instead of any person or face."}
 - The prompts must not copy the selected screenshot as-is. They must specify a screenshot distillation plan: keep only 2-3 essential UI signals, remove noisy sidebars/long text/unrelated details, and rebuild the screen area as a clean real-feeling UI.
 - The prompts must include a visual communication plan: the one-glance subject, the primary evidence, the maximum size of supporting evidence, and what to delete/crop if the primary evidence becomes too small.
 - If the primary evidence is a row/grid/gallery/list of result cards, cover thumbnails, generated images, or comparison examples, the prompts must make those results large and readable as the dominant gallery. Do not shrink them into a faithful full-workspace screenshot.
 - The prompts must include a title decoration plan: the title area cannot be plain text only. Add 1-2 tasteful, content-related title accents such as a subtle keyword highlight, thin underline, small workflow label, cursor mark, bracket, or UI state chip derived from the current title, screenshot, subtitle, topic, or product identity.
 - The prompts must not ask for local post-processing.
 - {subtitle_instruction}
-- For the 4:3 and 16:10 horizontal prompts, the main title must be the first visual anchor, while the selected screen evidence remains large and readable. All prompts must state the title size explicitly (portrait: each line spans ~90%-96% of the safe-area width; landscape: cap height ~11%-15% of canvas height) so the title cannot come out small.
+- For the 4:3 and 16:9 horizontal prompts, the main title must be the first visual anchor, while the selected screen evidence remains large and readable. Treat 4:3 as the Bilibili homepage primary upload asset and 16:9 as a separate personal-space companion. All prompts must state the title size explicitly (portrait: each line spans ~90%-96% of the safe-area width; landscape: cap height ~11%-15% of canvas height) so the title cannot come out small.
 """
     content: list[dict[str, Any]] = [{"type": "text", "text": user_text}]
     for item in frames:
@@ -1112,7 +1113,7 @@ def run_analysis(
             "prompts": {
                 "3x4": {"size": args.portrait_size, "prompt": ""},
                 "4x3": {"size": args.landscape_size, "prompt": ""},
-                "16x10": {"size": args.bilibili_size, "prompt": ""},
+                "16x9": {"size": args.bilibili_size, "prompt": ""},
             },
             "cover_direction_markdown": "Dry run only. No API call was made.",
         }
@@ -1167,7 +1168,7 @@ def redact_payload(payload: Any) -> Any:
 
 def requested_aspects(args: argparse.Namespace) -> tuple[str, ...]:
     if args.aspect == "all":
-        return ("3x4", "4x3", "16x10")
+        return ("3x4", "4x3", "16x9")
     if args.aspect == "both":
         return ("3x4", "4x3")
     return (args.aspect,)
@@ -1177,7 +1178,7 @@ def aspect_size(args: argparse.Namespace, aspect_key: str) -> str:
     return {
         "3x4": args.portrait_size,
         "4x3": args.landscape_size,
-        "16x10": args.bilibili_size,
+        "16x9": args.bilibili_size,
     }[aspect_key]
 
 
@@ -1228,7 +1229,7 @@ def hard_rule_backfill(
     aspect_phrase = {
         "3x4": "3:4",
         "4x3": "4:3",
-        "16x10": "16:10",
+        "16x9": "16:9",
     }[aspect_key]
 
     if aspect_phrase not in prompt:

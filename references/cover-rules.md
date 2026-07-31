@@ -24,8 +24,8 @@
 
 - 源截图、重建 UI 和生图底图不保留人物。移除真人画中画、摄像头气泡、人脸、头像和人物形象；限制适用于 UI 卡片、对比图、画廊样本、嵌套截图和小预览条。
 - 配置启用头像时，最终封面只允许出现配置的一张透明头像，由代码在生图后合成；未启用时最终封面保持无人物。
-- 仅在配置启用头像时，生图底图预留头像安全区，不放标题、Logo、小标签和主证据：3:4 为 `x=48%-100%, y=56%-100%`；4:3 为 `x=60%-100%, y=37%-100%`；16:10 为 `x=64%-100%, y=37%-100%`。安全区只延续背景和非关键屏幕细节，不生成头像、轮廓、占位卡或额外容器。
-- 创作者头像是否启用及素材路径来自用户配置；公开 Skill 默认关闭。启用时的默认布局为：3:4 宽 55%、顶部 58%、向右越界 6%；4:3 宽 38%、顶部 40%、向右越界 3%；16:10 宽 34%、顶部 40%、向右越界 3%，允许底部和右侧自然裁切。
+- 仅在配置启用头像时，生图底图预留头像安全区，不放标题、Logo、小标签和主证据：3:4 为 `x=48%-100%, y=56%-100%`；4:3 为 `x=60%-100%, y=37%-100%`；16:9 为 `x=62%-100%, y=37%-100%`。安全区只延续背景和非关键屏幕细节，不生成头像、轮廓、占位卡或额外容器。
+- 创作者头像是否启用及素材路径来自用户配置；公开 Skill 默认关闭。启用时的默认布局为：3:4 宽 55%、顶部 58%、向右越界 6%；4:3 宽 38%、顶部 40%、向右越界 3%；16:9 宽 32%、顶部 40%、右侧内收 2%。
 - 每张封面都要有可见的衬线字体层次，优先用于英文产品名、模型名、数字、小标签或关键词。
 - 主标题必须是第一视觉锚点。除非用户要求低调标题，标题视觉面积要明显大于普通封面。
 - 标题和屏幕必须落在清晰网格里，优先左对齐、居中对齐或轴线对齐，避免随机漂浮和边距混乱。
@@ -74,6 +74,7 @@
 ### 4:3 横屏
 
 - 必须是 exact 4:3 horizontal cover；脚本 API 尺寸默认使用 `1280x960`。
+- 这是 B 站首页推荐主封面，也是 `video-publisher` 默认上传给 B 站的源文件；B 站当前建议尺寸至少 `1200x900`。
 - 标题必须作为第一视觉锚点，不能变成左侧小标签。
 - 标题和屏幕都要足够大，横版建议标题区约占画面宽度 45%-55%，屏幕证据约占画面宽度 45%-55%，两者可轻微重叠。
 - 横版主标题每行字高约占画面高度 11%-15%，标题块整体（含副标题和装饰）约占画面高度 35%-50%；每行 3-6 个字断行，不要压成一行小字。
@@ -81,10 +82,11 @@
 - 横版可以加入克制点缀，点缀类型由当前内容决定，用来强化标题阅读、界面状态或屏幕关键区域。
 - 点缀要来自主题逻辑，并且能让读者更快理解当前工作流。
 
-### 16:10 B 站横屏
+### 16:9 B 站个人空间伴随版
 
-- 必须是 exact 16:10 horizontal cover；脚本 API 尺寸默认使用 `1280x800`。
-- 标题必须作为第一视觉锚点，屏幕证据保持大且可读；优先利用额外横向空间放大主证据，不要横向堆满细碎 UI。
+- 必须是 exact 16:9 horizontal cover；脚本 API 尺寸默认使用 `1280x720`。
+- 这是 B 站个人空间伴随版，不作为默认上传源；B 站发布默认上传独立生成的 4:3 首页主封面。
+- 标题必须作为第一视觉锚点，屏幕证据保持大且可读；利用额外横向空间延展背景和次要画面。
 - 标题区建议约占画面宽度 38%-48%，屏幕证据约占画面宽度 52%-62%，两者可轻微重叠。
 - 主标题每行字高约占画面高度 11%-15%，每行 3-7 个字断行，避免压成贯穿整张封面的一行小字。
 - 构图要兼顾 B 站信息流缩略图：标题、产品 Logo 和关键结果远离边缘，主证据在缩小后仍能被识别。
@@ -195,7 +197,7 @@
 
 ```text
 Use case: ads-marketing.
-Asset type: <Xiaohongshu exact 3:4 portrait cover / Xiaohongshu exact 4:3 horizontal cover / Bilibili exact 16:10 horizontal cover>.
+Asset type: <Xiaohongshu exact 3:4 portrait cover / exact 4:3 horizontal primary cover for Xiaohongshu and Bilibili homepage recommendations / Bilibili exact 16:9 personal-space companion cover>.
 Input images: Image 1 is the selected real screen evidence frame. Image 2 is the product logo if provided.
 Primary request: Create one complete person-free Apple-like AI tool tutorial base cover. Preserve real product identity and tutorial evidence. Remove person, webcam bubble, old subtitles, and unrelated clutter. <If creator portrait is enabled, reserve its configured safe area for a deterministic local composite; otherwise keep the final cover person-free.>
 Content attribution: main topic is "<主主题>"; main product is "<主产品>"; host interface is "<承载界面或无>"; supporting brands are "<辅助品牌或无>".
