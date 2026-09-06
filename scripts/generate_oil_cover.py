@@ -114,11 +114,13 @@ CREATOR_PORTRAIT_LAYOUTS = {
 }
 RETRYABLE_HTTP_CODES = {408, 429, 500, 502, 503, 504}
 AUTO_PRODUCT_LOGOS = [
+    (r"\b(?:feishu|lark)(?:\s+cli)?\b|飞书(?:\s*CLI)?", "feishu.png"),
     (r"\bkimi(?:\s+k3)?\b|月之暗面|Moonshot(?:\s*AI)?", "kimi.png"),
     (r"\bclaude\s+code\b|Claude Code|ClaudeCode|claude-code", "claude-code.png"),
     (r"\bcodex\b|Codex|代码智能体|Coding Agent", "codex-openai.png"),
     (r"\bchatgpt\b|ChatGPT|\bopenai\b|OpenAI", "openai.png"),
     (r"\bgemini\b|Gemini", "gemini.png"),
+    (r"\bgrok(?:\s*\d+(?:\.\d+)?)?\b|Grok|xAI", "grok.png"),
     (r"\banthropic\b|Anthropic", "anthropic.png"),
     (r"\bclaude\b|Claude", "claude.png"),
     (r"\bcursor\b|Cursor", "cursor.png"),
@@ -569,25 +571,27 @@ def infer_auto_logo_paths(args: argparse.Namespace, subtitle_text: str) -> list[
     if args.logo:
         return []
 
-    primary_text = "\n".join(part for part in [args.title, args.topic] if part)
-    fallback_text = subtitle_text[:4000]
+    # 有标题或主题时不从字幕补品牌；主产品缺资产也不能换成次要品牌。
+    search_texts = [text for text in (args.title, args.topic) if text.strip()]
+    if not search_texts:
+        search_texts = [subtitle_text[:4000]]
 
-    matched: list[Path] = []
-    seen: set[str] = set()
-    for text in [primary_text, fallback_text]:
+    for text in search_texts:
         if not text.strip():
             continue
+        matched: list[Path] = []
+        seen: set[str] = set()
         for pattern, filename in AUTO_PRODUCT_LOGOS:
             if filename in seen:
                 continue
             if re.search(pattern, text, flags=re.I):
+                seen.add(filename)
                 path = PRODUCT_LOGO_DIR / filename
                 if path.exists():
                     matched.append(path)
-                    seen.add(filename)
-        if matched:
-            break
-    return matched[:3]
+        if seen:
+            return matched[:3]
+    return []
 
 
 def convert_svg_to_png(src: Path, dst: Path) -> None:
@@ -1196,9 +1200,73 @@ def strip_external_subtitle(prompt: str) -> str:
     return prompt.strip()
 
 
+def exact_title_lines(title: str) -> list[str]:
+    """Split a locked operator title without dropping or rewriting any text."""
+    value = " ".join(title.split())
+    if not value:
+        return []
+    words = value.split(" ")
+    if len(words) == 1:
+        if len(value) == 1 or re.search(r"[A-Za-z0-9]", value):
+            return [value]
+        midpoint = max(1, len(value) // 2)
+        return [value[:midpoint], value[midpoint:]]
+    split_at = min(
+        range(1, len(words)),
+        key=lambda index: abs(len(" ".join(words[:index])) - len(" ".join(words[index:]))),
+    )
+    return [" ".join(words[:split_at]), " ".join(words[split_at:])]
+
+
+def lock_known_title(args: argparse.Namespace, analysis: dict[str, Any]) -> list[str]:
+    """Keep a supplied cover title exact in analysis and every generation prompt."""
+    if not args.title or not str(args.title).strip():
+        return []
+    exact_title = " ".join(str(args.title).split())
+    lines = exact_title_lines(exact_title)
+    title = analysis.setdefault("title", {})
+    if not isinstance(title, dict):
+        title = {}
+        analysis["title"] = title
+    notes: list[str] = []
+    if title.get("main") != exact_title or title.get("line_breaks") != lines:
+        notes.append("locked the operator-supplied title verbatim.")
+    title["main"] = exact_title
+    title["line_breaks"] = lines
+
+    title_instruction = (
+        f"Title text: {json.dumps(exact_title, ensure_ascii=False)} with exact line breaks "
+        f"{json.dumps(chr(10).join(lines), ensure_ascii=False)}"
+    )
+    quoted_text = r'''(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')'''
+    prompts = analysis.get("prompts", {})
+    if isinstance(prompts, dict):
+        for key, item in prompts.items():
+            if not isinstance(item, dict):
+                continue
+            prompt = str(item.get("prompt", ""))
+            locked, count = re.subn(
+                rf"Title text:\s*{quoted_text}(?:\s+with exact line breaks\s*{quoted_text})?",
+                lambda _match: title_instruction,
+                prompt,
+                flags=re.I,
+            )
+            if not count:
+                locked = title_instruction + ".\n" + prompt
+            if locked != prompt:
+                item["prompt"] = locked
+                notes.append(f"{key}: locked exact title text in generation prompt.")
+    return notes
+
+
 def product_logo_guard(logos: list[dict[str, str]]) -> str:
     if not logos:
-        return ""
+        return (
+            " Product identity guard: no verified product logo reference is supplied. "
+            "Do not draw, invent, approximate, or substitute any standalone product logo, app icon, or brand mark. "
+            "Do not promote a supporting brand mentioned in the transcript. Use the exact product-name text and "
+            "the selected screenshot's real UI evidence for identity."
+        )
     names = ", ".join(Path(item.get("path", "")).name for item in logos if item.get("path"))
     return (
         " Product identity guard: use the supplied logo reference image"
@@ -1310,9 +1378,9 @@ def hard_rule_backfill(
         notes.append(f"{aspect_key}: backfilled contact shadow.")
 
     logo_guard = product_logo_guard(logos)
-    if logo_guard and "Product identity guard:" not in prompt and "logo reference" not in low:
+    if logo_guard and "Product identity guard:" not in prompt:
         prompt += logo_guard
-        notes.append(f"{aspect_key}: backfilled product logo reference.")
+        notes.append(f"{aspect_key}: backfilled product identity guard.")
 
     return prompt, notes
 
@@ -1335,7 +1403,14 @@ def apply_script_guards(
         return analysis
     logos = logos or []
     analysis["creator_portrait_plan"] = creator_portrait_plan(args.default_creator_portrait)
+    if not logos:
+        analysis["logo_plan"] = {
+            "outside_logo_or_mark": "",
+            "source": "",
+            "reason": "No verified logo reference matched the primary title/topic; keep identity text-and-UI-only.",
+        }
 
+    title_lock_notes = lock_known_title(args, analysis)
     title = analysis.setdefault("title", {})
     if isinstance(title, dict) and not args.allow_subtitle:
         title["subtitle"] = ""
@@ -1344,7 +1419,7 @@ def apply_script_guards(
     if not isinstance(prompts, dict):
         return analysis
 
-    postprocess_notes: list[str] = []
+    postprocess_notes: list[str] = list(title_lock_notes)
     for key, item in prompts.items():
         if not isinstance(item, dict):
             continue

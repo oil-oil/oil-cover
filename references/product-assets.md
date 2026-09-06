@@ -6,6 +6,7 @@
 
 | 产品 | 文件 | 用法 |
 | --- | --- | --- |
+| 飞书 / Lark | `feishu.png` | 飞书 CLI、飞书多维表格、飞书文档和 Lark 工作流主题 |
 | OpenAI | `openai.png` | OpenAI、ChatGPT、Codex 生态主题的辅助识别 |
 | Codex | `codex-openai.png` | Codex、Coding Agent、代码工作流主题的主视觉锚点 |
 | Claude | `claude.png` | Claude、Claude 模型、Anthropic 生态主题 |
@@ -13,6 +14,13 @@
 | Anthropic | `anthropic.png` | Anthropic 公司或模型生态主题 |
 | Cursor | `cursor.png` | Cursor、IDE 对比、AI 编程工具主题 |
 | Gemini | `gemini.png` | Gemini、Google AI、模型对比主题 |
+| Grok | `grok.png` | Grok、xAI、模型对比主题 |
+| DeepSeek | `deepseek.png`、`deepseek.svg` | DeepSeek 模型与工具主题，通过 `--logo` 显式传入 |
+| Hypit | `hypit.png`、`hypit.svg` | Hypit 视频制作主题，通过 `--logo` 显式传入 |
+| NotchNotes | `notchnotes.png` | NotchNotes 产品演示，通过 `--logo` 显式传入 |
+| Vercel | `vercel.png` | Vercel 部署主题，通过 `--logo` 显式传入 |
+| X | `x.png` | X 平台主题，通过 `--logo` 显式传入 |
+| Z.ai / GLM | `z-ai-glm.png` | Z.ai、GLM 主题，通过 `--logo` 显式传入 |
 | Kimi | `kimi.png` | Kimi、Kimi K3、Kimi Code、Moonshot AI 主题 |
 | LongCat | `longcat.png` | LongCat、LongCat 2.0、美团模型和模型对比主题 |
 | GitHub Copilot | `github-copilot.png` | Copilot、GitHub 工作流、IDE 辅助主题 |
@@ -41,4 +49,6 @@
 - Selector favicon：`https://oil-oil.github.io/selector/assets/favicon.svg`
 - LongCat 2.0 官方 Hugging Face 仓库：`https://huggingface.co/meituan-longcat/LongCat-2.0/blob/main/figures/longcat_logo.svg`
 - Kimi 官网 favicon：`https://www.kimi.com/favicon.ico`；长期资产使用同图形的 Lobe Icons 640×640 透明 PNG / SVG
+- Grok 图标：本机已安装 Grok Skill 的 `assets/grok-icon.svg`；转换为 640×640 RGBA PNG 后归档
 - Simple Icons CDN：`https://cdn.simpleicons.org/`
+- 飞书 / Lark 图标：本机已安装的 `/Applications/Lark.app/Contents/Resources/app.icns`；转换为 640×640 RGBA PNG 后归档

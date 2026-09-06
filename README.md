@@ -17,10 +17,12 @@
 
 ## 特点
 
-- **视频选帧**：把整段视频压成小 clip 交给多模态模型看完全片、按内容挑出最适合做封面的一帧（带理由），比盲采等距帧准得多。
+- **视频选帧**：本地扫描和评分筛出高清候选帧，再由多模态模型按语义选择，不上传整段视频。
 - **完整视觉规范**：`references/cover-rules.md` 覆盖构图、背景层、字体标题、点缀、自动质检和提示词骨架。
 - **默认三画幅**：并行出小红书 `3:4` 竖版、B 站首页主封面 `4:3` 横版和个人空间伴随版 `16:9` 横版。
 - **产品 Logo 自动匹配**：内置 Claude / Codex / Cursor / Gemini / GitHub 等常用 AI 产品 Logo。
+
+已指定的封面标题会锁定到分析与各画幅提示词中。有标题或主题时，Logo 匹配不再回退到字幕里的次要品牌；没有可信资产时使用产品名和真实界面建立识别。新增参考资产见 [资产列表](references/product-assets.md)。
 
 ## 两种执行模式
 
@@ -74,7 +76,9 @@ python3 ~/.claude/skills/oil-cover/scripts/generate_oil_cover.py \
 
 1. `--api-key` 参数
 2. `ZENMUX_API_KEY` 环境变量
-3. skill 目录根的 `.zenmux_api_key` 文件（已被 `.gitignore` 忽略，**切勿提交**）
+3. `--api-key-file` 指定的文件；未指定时使用用户配置中的 `api_key_file`，最后回退到 `~/.config/oil-cover/zenmux_api_key`
+
+日常使用优先配置环境变量或外部密钥文件，不把密钥写进 Skill、提示词或 Git 仓库。
 
 ### 依赖
 
@@ -85,6 +89,14 @@ python3 ~/.claude/skills/oil-cover/scripts/generate_oil_cover.py \
 ## 用法（Agent 自主执行）
 
 在带图像生成工具的 Agent（如 Codex）里触发，Agent 会读 [`references/agent-native-flow.md`](references/agent-native-flow.md) 自己完成选帧、分析、出图，**不需要 ZenMux key**。生图那一步在 Codex 里用其系统级 `imagegen` 的内置 `image_gen` 工具（图生图）。
+
+## 本地测试
+
+```bash
+python3 -m unittest discover -s tests -p 'test_*.py'
+```
+
+测试通过主入口验证 Logo 选择、标题锁定和 sidecar 写入，使用模拟分析结果，不调用外部 API 或生成图片。
 
 ## 目录结构
 
