@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "id": "oil-cover",
+  "label": "封面分析与生图 API Key",
+  "credential": "oil-cover/zenmux/default",
+  "ui": {
+    "title": "配置服务",
+    "placeholder": "粘贴该服务的 API Key",
+    "saveLabel": "保存"
+  }
+}

@@ -303,7 +303,7 @@ def api_key_from_args(args: argparse.Namespace) -> str:
         key = args.api_key_file.read_text(encoding="utf-8").strip()
     if not key and not args.dry_run:
         fail(
-            f"ZENMUX_API_KEY is not set. Export it, put it in {DEFAULT_API_KEY_FILE}, or pass --dry-run."
+            "API Key 未配置。请按 references/api-key-setup.md 使用本机页面并通过 run 入口执行，或用 --dry-run 检查本地计划。"
         )
     return key
 

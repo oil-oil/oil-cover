@@ -9,10 +9,14 @@ description: 生成小红书和 B 站 AI 工具实操视频封面，支持脚本
 
 先检查当前视频已有产物：源视频、审校字幕、标题、画幅和头像配置未变且最终图已经验收时，直接复用。缺哪一版只生成哪一版；只改头像时复用无人物底图。用户选定已有版本后停止其他候选的生成。两种模式均遵守这条恢复规则，不因分析文件格式不同重做已有封面。
 
+## API Key 配置入口
+
+需要外部服务凭据时先读[API Key 配置与业务读取](references/api-key-setup.md)：复用已有安全入口；本机缺少 Key 时使用随附固定页面，保存后通过业务包装入口读取。内置能力与纯本地流程不要求配置 Key。
+
 ## 两种执行模式
 
-- **模式一 · 脚本模式（默认）**：把活儿交给 `generate_oil_cover.py`，由脚本用 ZenMux 上的 Gemini 选帧分析、调 `gpt-image-2` 生成无人物底图；用户配置启用创作者头像时，再用确定性代码把透明头像合成到右下角。需要 Python + ffmpeg + Pillow + ZenMux key。下面「默认入口」到「输出说明」描述的都是这一模式。
-- **模式二 · Agent 自主执行**：不调外部 Gemini、不需要 ZenMux key，由执行的 Agent 自己读 SOP 完成选帧、分析和生图；用户配置启用头像时，再调用项目脚本的头像合成函数。完整流程见 `references/agent-native-flow.md`。
+- **模式一 · 脚本模式（默认）**：把活儿交给 `generate_oil_cover.py`，由脚本调用外部视觉服务完成选帧分析，并生成无人物底图；用户配置启用创作者头像时，再用确定性代码把透明头像合成到右下角。需要 Python、ffmpeg、Pillow 和所选服务的 API Key。下面「默认入口」到「输出说明」描述的都是这一模式。
+- **模式二 · Agent 自主执行**：复用宿主视觉与内置生图能力，无需额外服务 Key，由执行的 Agent 自己读 SOP 完成选帧、分析和生图；用户配置启用头像时，再调用项目脚本的头像合成函数。完整流程见 `references/agent-native-flow.md`。
 
 ## 安装位置与用户配置
 
@@ -77,7 +81,7 @@ description: 生成小红书和 B 站 AI 工具实操视频封面，支持脚本
 将实际存在的生成脚本绝对路径记为 `OIL_COVER_SCRIPT`。默认运行以下命令；有字幕时额外添加 `--subtitle "<实际纯文本字幕路径>"`，没有字幕时省略该参数：
 
 ```bash
-python3 "$OIL_COVER_SCRIPT" \
+node "$SKILL_DIR/scripts/credential-ui/src/profile.ts" run default -- python3 "$OIL_COVER_SCRIPT" \
   --video "<视频路径>" \
   --title "<提炼后的封面主标题>" \
   --topic "<补充背景>"
@@ -86,7 +90,7 @@ python3 "$OIL_COVER_SCRIPT" \
 如果用户提供的是截图或已选关键帧：
 
 ```bash
-python3 "$OIL_COVER_SCRIPT" \
+node "$SKILL_DIR/scripts/credential-ui/src/profile.ts" run default -- python3 "$OIL_COVER_SCRIPT" \
   --image "<截图或关键帧路径>" \
   --logo "<可选 Logo 路径>" \
   --title "<标题或主题>" \
@@ -126,7 +130,7 @@ python3 "$OIL_COVER_SCRIPT" \
 - 默认规则文件：`references/cover-rules.md`
 - 默认输出位置：视频（或图片）所在目录。最终封面命名 `<视频名>_3x4.png`、`<视频名>_4x3.png`、`<视频名>_16x9.png`，直接落在影片旁边方便查找；分析、prompt、原始响应等中间产物收进 `<视频名>.oil-cover/` 子目录。传 `--output-root` 可改到别处。
 
-脚本负责用 ffmpeg 本地扫描+评分预筛出若干高清候选帧（默认策略，无需调模型），把候选交给 Gemini 多模态分析、由它按语义选出最佳封面帧并生成封面方案和提示词、保存 sidecar、并行调用 Zenmux 图片 API、生成无人物底图。用户配置启用头像时，再用 Pillow 把透明头像按画幅参数合成到右下角；头像不会进入 Gemini 或图片 API 的参考图列表。底图保存在 `<视频名>.oil-cover/<画幅>.generated-base.png`，合成记录保存在 `portrait_composite.json`，最终封面写到影片目录。本地预筛的打分明细写在 `<视频名>.oil-cover/frame_selection_local.json`。
+脚本负责用 ffmpeg 本地扫描+评分预筛出若干高清候选帧（默认策略，无需调模型），把候选交给视觉模型分析、由模型按语义选出最佳封面帧并生成封面方案和提示词、保存 sidecar、并行调用所选图片服务、生成无人物底图。用户配置启用头像时，再用 Pillow 把透明头像按画幅参数合成到右下角；头像不会进入 视觉或图片 API 的参考图列表。底图保存在 `<视频名>.oil-cover/<画幅>.generated-base.png`，合成记录保存在 `portrait_composite.json`，最终封面写到影片目录。本地预筛的打分明细写在 `<视频名>.oil-cover/frame_selection_local.json`。
 
 ## 何时读取参考文件
 
@@ -148,7 +152,7 @@ python3 "$OIL_COVER_SCRIPT" \
 - 每次生图前保存 `.prompt.md` sidecar；生成后保留 `cover_plan.md` 和最终图片。脚本模式保留脚本输出的 `manifest.final.json`、`analysis.json` 和原始响应；自主模式按 SOP 保留 `analysis.md` 和工具实际返回的记录，不伪造内部字段。
 - 返工前按 `references/cover-rules.md` 区分事实或交付错误与审美偏好；只重做失败画幅。替换最终图片前，将仍可用的旧图片和对应 sidecar 成套保存在视频自己的工作目录中，候选通过检查后再切换，避免用户选择旧版时无法恢复。
 - 写 `analysis.json`、`cover_plan.md`、`.prompt.md`、生成记录以及本 skill 自身的参考文档时，只描述当前这一版的最终状态，不要塞编辑历史元数据（「更新于 X」「第 N 版」「原 X 现改为 Y」「本次修正了 Z」这类），不要把文档写成或改成 changelog；返工重跑时直接覆盖成新版本，而不是在文档里追加一段修改历史。
-- 不要把 Zenmux API key 写进提示词、sidecar、日志或最终回复。
+- 不要把 API Key 写进提示词、sidecar、日志或最终回复。
 
 ## 输出说明
 
