@@ -196,7 +196,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--api-base", default=DEFAULT_API_BASE)
     parser.add_argument("--analysis-model", default=DEFAULT_ANALYSIS_MODEL)
     parser.add_argument("--image-model", default=DEFAULT_IMAGE_MODEL)
-    parser.add_argument("--api-key", default="", help="Optional API key. Prefer ZENMUX_API_KEY.")
+    parser.add_argument("--api-key", default="", help="已停用明文参数，请使用可信运行环境或外部凭据文件")
     parser.add_argument(
         "--api-key-file",
         type=Path,
@@ -296,7 +296,9 @@ def read_text(path: Path | None, limit: int = 60000) -> str:
 
 
 def api_key_from_args(args: argparse.Namespace) -> str:
-    key = args.api_key or os.environ.get("ZENMUX_API_KEY", "")
+    if args.api_key:
+        raise ValueError("--api-key 已停用；请从可信运行环境提供 ZENMUX_API_KEY，勿在命令中传密钥")
+    key = os.environ.get("ZENMUX_API_KEY", "")
     if not key and args.api_key_file and args.api_key_file.exists():
         key = args.api_key_file.read_text(encoding="utf-8").strip()
     if not key and not args.dry_run:

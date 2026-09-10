@@ -57,6 +57,11 @@ class CoverGuardTests(unittest.TestCase):
         analysis = json.loads(Path(manifest["analysis_path"]).read_text(encoding="utf-8"))
         return manifest, analysis
 
+    def test_secret_command_argument_is_rejected_without_echo(self):
+        with self.assertRaises(ValueError) as error:
+            self.run_pipeline(extra=("--api-key", "fake-test-secret"))
+        self.assertNotIn("fake-test-secret", str(error.exception))
+
     def test_unknown_title_does_not_take_a_brand_from_subtitles(self):
         manifest, analysis = self.run_pipeline()
         self.assertEqual(manifest["logos"], [])
