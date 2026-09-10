@@ -1,6 +1,6 @@
 # oil-cover
 
-为小红书「AI 工具实操」内容生成稳定、清楚、干净、精致的视频封面的 Claude / Codex Skill。
+基于真实视频内容生成三种画幅的封面，支持选帧分析、标题设计和可选创作者头像合成。
 
 方向是 **真实屏幕证据 + Apple-like 产品视觉 + 清晰标题 + 无人物干净构图**，一次性整图生成，不靠本地贴字拼图。
 
@@ -38,22 +38,18 @@
 
 ## 安装
 
-把本仓库克隆到 Claude Code 或 Codex 的 skills 目录：
+使用支持的 Skill 安装器：
 
 ```bash
-# Claude Code
-git clone https://github.com/oil-oil/oil-cover.git ~/.claude/skills/oil-cover
-
-# 或 Codex
-git clone https://github.com/oil-oil/oil-cover.git ~/.codex/skills/oil-cover
+npx skills add oil-oil/oil-cover
 ```
 
-脚本按 `OIL_COVER_SKILL_DIR` → `~/.claude/skills/oil-cover` → `~/.codex/skills/oil-cover` 的顺序自动定位规则文件和 Logo 资产，装到上面任一位置即开箱可用，无需配置环境变量。
+运行时使用当前 Skill 目录中的脚本与资源，不要求安装到某个宿主的固定目录。`--api-key` 明文命令参数已停用；环境变量或已有私有凭据文件仍可读取。
 
 ## 用法（脚本模式）
 
 ```bash
-python3 ~/.claude/skills/oil-cover/scripts/generate_oil_cover.py \
+python3 "<Skill绝对目录>/scripts/generate_oil_cover.py" \
   --video "<视频路径>" \
   --title "<标题或主题>" \
   --topic "<补充背景>"
@@ -62,7 +58,7 @@ python3 ~/.claude/skills/oil-cover/scripts/generate_oil_cover.py \
 截图 / 关键帧输入：
 
 ```bash
-python3 ~/.claude/skills/oil-cover/scripts/generate_oil_cover.py \
+python3 "<Skill绝对目录>/scripts/generate_oil_cover.py" \
   --image "<截图路径>" \
   --logo "<可选 Logo 路径>" \
   --title "<标题>"
@@ -74,9 +70,8 @@ python3 ~/.claude/skills/oil-cover/scripts/generate_oil_cover.py \
 
 脚本调用 ZenMux（Gemini 分析 + `gpt-image-2` 生图），需要 API key。按优先级读取：
 
-1. `--api-key` 参数
-2. `ZENMUX_API_KEY` 环境变量
-3. `--api-key-file` 指定的文件；未指定时使用用户配置中的 `api_key_file`，最后回退到 `~/.config/oil-cover/zenmux_api_key`
+1. `ZENMUX_API_KEY` 环境变量
+2. `--api-key-file` 指定的文件；未指定时使用用户配置中的 `api_key_file`，最后回退到 `~/.config/oil-cover/zenmux_api_key`
 
 日常使用优先配置环境变量或外部密钥文件，不把密钥写进 Skill、提示词或 Git 仓库。
 
@@ -118,3 +113,9 @@ assets/product-logos/           内置 AI 产品 Logo
 ## License
 
 [MIT](LICENSE) © 2026 oil 欧呦
+
+## API Key 配置页面
+
+首次使用外部服务时，可以在本机配置页亲自填写 Key；已有配置会复用，密钥存入系统凭据库。只为实际使用的外部服务配置；纯本地处理不需要 Key。页面需要 Node.js 22.18+ 与可用的系统凭据服务，业务运行仍使用原依赖。
+
+安装、状态检查、打开页面和带凭据运行的完整入口见[配置说明](references/api-key-setup.md)。页面保存与业务读取已经接通；不把 Key 发进聊天，也不自动迁移旧文件。
