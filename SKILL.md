@@ -113,7 +113,7 @@ node "$SKILL_DIR/scripts/credential-ui/src/profile.ts" run default -- python3 "$
 - `--aspect all|both|3x4|4x3|16x9`：默认 `all` 并行生成三版；`both` 为兼容旧调用，只生成 `3:4` 和 `4:3`；单独重跑时只生成指定画幅。
 - `--bilibili-size <尺寸>`：B 站个人空间 `16:9` 伴随版的 API 尺寸，默认 `1280x720`；B 站默认上传源仍是 `4:3` 主封面。
 - 副标题默认放开。如需禁用副标题、让外层只剩主标题，传 `--no-allow-subtitle`。
-- 创作者头像由本地代码在生图后合成，不作为 Gemini 或 `gpt-image-2` 的参考图上传。是否启用及素材路径来自用户配置；公开 Skill 默认关闭。默认布局参数为：3:4 宽约 55%、顶部约 58%、向右越界约 6%；4:3 宽约 38%、顶部约 40%、向右越界约 3%；16:9 宽约 32%、顶部约 40%、右侧内收约 2%。
+- 创作者头像由本地代码在生图后合成，不作为 Gemini 或 `gpt-image-2.5-flare` 的参考图上传。是否启用及素材路径来自用户配置；公开 Skill 默认关闭。默认布局参数为：3:4 宽约 55%、顶部约 58%、向右越界约 6%；4:3 宽约 38%、顶部约 40%、向右越界约 3%；16:9 宽约 32%、顶部约 40%、右侧内收约 2%。
 - 用户明确要求无人物封面时传 `--no-default-creator-portrait`。配置启用头像时默认保留；未配置时保持无人物。
 
 排查与验证：
@@ -125,8 +125,8 @@ node "$SKILL_DIR/scripts/credential-ui/src/profile.ts" run default -- python3 "$
 ## 脚本职责
 
 - 脚本路径：优先 `$SKILL_DIR/scripts/generate_oil_cover.py`，否则使用用户配置 `script_path`
-- 默认分析模型：`google/gemini-3.5-flash`
-- 默认生图模型：`openai/gpt-image-2`
+- 默认分析模型：`google/gemini-3.8-flash`
+- 默认生图模型：`openai/gpt-image-2.5-flare`
 - 默认规则文件：`references/cover-rules.md`
 - 默认输出位置：视频（或图片）所在目录。最终封面命名 `<视频名>_3x4.png`、`<视频名>_4x3.png`、`<视频名>_16x9.png`，直接落在影片旁边方便查找；分析、prompt、原始响应等中间产物收进 `<视频名>.oil-cover/` 子目录。传 `--output-root` 可改到别处。
 
