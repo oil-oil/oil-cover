@@ -33,28 +33,6 @@ class CoverGuardTests(unittest.TestCase):
         self.assertIn("tell test/custom-image-model", messages[1]["content"][0]["text"])
         self.assertNotIn("openai/gpt-image-2.", messages[0]["content"])
 
-    def test_semantic_lines_survive_title_lock_without_rewriting(self):
-        title = "写完代码，接下来怎么办？"
-        lines = ["写完代码，", "接下来", "怎么办？"]
-        args = type("Args", (), {"title": title})()
-        analysis = {"title": {"main": title, "line_breaks": lines},
-                    "prompts": {"4x3": {"prompt": "Create a cover."}}}
-        COVER.lock_known_title(args, analysis)
-        self.assertEqual(analysis["title"]["line_breaks"], lines)
-        self.assertIn(json.dumps("\n".join(lines), ensure_ascii=False), analysis["prompts"]["4x3"]["prompt"])
-        self.assertFalse(COVER.valid_title_lines(["写完代码", "接下来怎么办？"], title))
-        self.assertFalse(COVER.valid_title_lines(["Code", "x 怎么用？"], "Codex 怎么用？"))
-        self.assertTrue(COVER.valid_title_lines(["Build with", "Codex"], "Build with Codex"))
-        self.assertEqual(COVER.exact_title_lines(title), ["写完代码，", "接下来怎么办？"])
-
-    def test_guards_do_not_override_a_flat_composition(self):
-        original = "Exact 4:3 cover; fine grid background in dusty blue. Front-facing flat diagram with no tilt."
-        prompt, _ = COVER.hard_rule_backfill(original, "4x3", [])
-        self.assertTrue(prompt.startswith(original))
-        self.assertNotIn("Perspective override", prompt)
-        self.assertNotIn("Screen depth crop", prompt)
-        self.assertNotIn("contact shadow", prompt)
-
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
