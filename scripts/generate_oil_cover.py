@@ -869,7 +869,7 @@ def build_analysis_messages(
         "Title direction: preserve the exact supplied text and punctuation, but break at semantic phrase "
         "boundaries, never at a character-count midpoint. Keep words, product names and grammatical phrases "
         "intact; do not strand a connective or auxiliary at the end of a line. Select ONE meaningful phrase "
-        "already in the title as the focal phrase. Make its character height about 1.3-1.6 times the context "
+        "already in the title as the focal phrase: prefer its decision, payoff, question or contrast over a generic introductory topic. Make its character height about 1.3-1.6 times the context "
         "lines, using scale and one controlled contrast treatment rather than making every line equally "
         "huge and heavy. State exact line breaks, focal phrase, character heights and line spacing. Aim for "
         "focal character height around 10%-14% of portrait canvas height or 13%-18% of landscape height, "
@@ -880,11 +880,11 @@ def build_analysis_messages(
         "shrinking it. Crop peripheral content or overlap noncritical edges if useful. A front-facing view "
         "is valid; use slight perspective only when it improves the composition without hiding evidence. "
         "Preserve the source medium: a slide stays an explanatory slide or diagram; never turn it into a "
-        "fictional product dashboard. Do not invent controls, metrics, brands or result cards. "
+        "fictional product dashboard. Do not invent controls, metrics, brands or result cards. In each final prompt write a CLOSED inventory of every allowed visible text string and every allowed logo. Evidence text must be copied from the selected frame, limited to one or two short source-supported labels per subject; do not expand it into feature lists. Any logo without its own verified reference asset must be omitted, with plain product-name text used instead. Tell the image model to add no other text, logo or feature, including inside the evidence illustration. "
         "Background direction: use a light base, fine grid, restrained grain and a visible atmosphere of "
         "1-3 named neighbouring muted hues. Place its tonal contrast behind the focal content, connecting "
         "title and evidence. If the middle feels empty, enlarge or reposition the real subject first; "
-        "more gradients, labels and decoration are not a substitute for composition. "
+        "more gradients, labels and decoration are not a substitute for composition. Do not interpret muted colour as near-invisible contrast: use a clearly visible broad muted colour field behind the focal phrase or evidence, connected to the subject contours, instead of a few faint corner glows. "
         "Optional styling: choose at most one keyword accent; serif accents, chips, arrows, extra labels, "
         "perspective and edge cropping are tools, not mandatory ingredients. Use only those that improve "
         "this layout. Remove optional information before reducing the title or evidence. "
@@ -974,6 +974,8 @@ Output strict JSON with this schema:
   "composition_plan": {{
     "focal_phrase": "verbatim phrase from title",
     "source_medium": "real interface / slide / diagram / other",
+    "allowed_visible_text": [],
+    "allowed_logo_assets": [],
     "aspects": {{
       "3x4": {{"title_region": "", "evidence_visible_region": "", "brand_region": "", "connection": ""}},
       "4x3": {{"title_region": "", "evidence_visible_region": "", "brand_region": "", "connection": ""}},
@@ -1291,7 +1293,8 @@ def product_logo_guard(logos: list[dict[str, str]]) -> str:
     return (
         " Product identity guard: use the supplied logo reference image"
         f"{'s' if len(logos) > 1 else ''} ({names}) for the real product mark. "
-        "Preserve the reference logo's actual silhouette, proportions, and mark style. "
+        "Preserve the reference logo's actual silhouette, proportions, colours, and mark style. "
+        "Only these supplied logo assets may be drawn; omit every other logo even inside the source diagram. "
         "Do not invent, simplify, replace, or approximate it with a generic code icon, braces icon, "
         "random abstract symbol, unrelated app logo, or text-only substitute."
     )
