@@ -27,7 +27,7 @@ Claude Code 当前**没有**内置图像生成工具，第六步通常要在 Cod
 | --- | --- | --- |
 | 选帧 | 本地预筛真实候选帧，再由 Gemini 按语义选择 | Agent 自己抽帧、看图、按 cover-rules 选 |
 | 分析 | Gemini 多模态 + cover-rules | Agent 自己分析 + cover-rules |
-| 生图 | ZenMux `gpt-image-2`（images/edits） | Agent 自带 image gen 工具（图生图） |
+| 生图 | ZenMux `gpt-image-2.5-flare`（images/edits） | Agent 自带 image gen 工具（图生图） |
 | 头像（可选） | 配置启用时由本地代码合成 | 调同一脚本的 `--composite-base` 入口 |
 | 质检返工 | Agent 检查脚本产物，按 cover-rules 处理失败画幅 | Agent 检查底图与合成结果，采用相同停止条件 |
 | 中间产物 | 视频旁 `<视频名>.oil-cover/` | 视频旁 `<视频名>.oil-cover/` |
