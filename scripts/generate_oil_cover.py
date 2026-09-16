@@ -829,7 +829,7 @@ def build_analysis_messages(
         "Before writing prompts, decide the one-glance subject: what result should be visible "
         "within 0.5 seconds in a phone feed. Make that subject the dominant visual evidence, "
         "and make every other UI element serve or yield to it. "
-        "Extract the few UI signals that explain the topic, rebuild them into a clean cover-ready screen, "
+        "Extract the few source-supported signals that explain the topic, preserve the source medium, "
         "and remove irrelevant navigation, long transcripts, old subtitles, random avatars, paths, timestamps, and tiny noisy text. "
         +
         (
@@ -855,42 +855,39 @@ def build_analysis_messages(
         "It never adds text, pastes Logos, changes layout, crops the generated cover, or performs visual repairs locally. "
         +
         "IMPORTANT: each prompt you write IS the final and complete instruction sent to the image model; "
-        "no extra rules are appended afterwards. So make every prompt fully self-contained and internally "
+        "the script enforces title, identity and portrait safety, but does not design the layout. Make every prompt self-contained and internally "
         "consistent. State the screenshot distillation, the visual-communication priority, the screen crop, "
         "the layout, the text styling, and a short avoid list ONCE each, in plain language. Do not repeat the "
         "same instruction in different words, do not give conflicting numbers or directions, and never rely "
         "on post-processing to fix the prompt. Prefer a tight, unambiguous prompt over a long padded one. "
-        "Visual quality bar, fold these naturally into the one prompt without padding: "
-        "(1) design an intentional colour scheme with real atmosphere: a clean light base (white, light "
-        "gray, or a very pale tinted paper) carrying a soft pastel colour atmosphere of 1-3 neighbouring "
-        "hues that blend gently at the edges/corners/behind the screen — name the hues explicitly, for "
-        "example dusty periwinkle + soft pink, or cream + pale gold. Sample hues from the frame or logo "
-        "but soften them to a creamy/dusty pastel; never the raw high-saturation UI colour (no acid lime, "
-        "no neon green, no electric blue, no fluorescent blocks) and never a full-spectrum rainbow. The "
-        "atmosphere must be clearly visible — a nearly colorless gray canvas reads as unfinished — yet "
-        "stay soft and airy. Pair it with one pastel keyword chip on the title whose hue echoes the "
-        "atmosphere; "
-        "(2) make the screen/browser object intentionally overflow and get clipped by at least one canvas "
-        "edge, showing only about 80%-95% of it while keeping a visible top-left window edge, for a premium "
-        "editorial close-up with real depth, never a small fully-centered complete screenshot; "
-        "(3) ground the screen with a soft graphite drop shadow plus a subtle contact shadow; "
-        "(4) when the evidence is a row of cards or thumbnails, show 3 oversized cards fully plus a 4th "
-        "clipped at the edge, not a flat strip of small ones; "
-        "(5) place the screen/browser object at a subtle 3D perspective tilt — rotated only a few degrees in "
-        "space (about 5-12 degrees) as if seen slightly from one side, with one edge nearer the viewer — for "
-        "gentle parallax depth and dimensionality; this intentionally overrides any 'front-facing flat / "
-        "0-degree rotation / no diagonal edge' default in the rules; keep all UI text readable and avoid "
-        "extreme skew, fisheye, warping, or heavy rotation; "
-        "(6) make the main title unmistakably large — the covers live in phone and desktop feeds: in the 3:4 portrait "
-        "prompt each title line spans about 90%-96% of the safe-area width with a cap height around 8%-12% "
-        "of the canvas height; in the 4:3 landscape prompt each title line's cap height is about 11%-15% of "
-        "the canvas height with 3-6 characters per line; treat the 4:3 cover as the Bilibili homepage primary "
-        "and the 16:9 cover as a separate personal-space companion; in the 16:9 prompt use the same cap-height "
-        "range and keep the title as the first anchor; "
-        "when unsure, go bigger and break the title into "
-        "two or three short lines instead of shrinking it. Brand emphasis belongs in a readable logo/name lockup, "
-        "not an extra headline or a reason to shrink the locked title. Remove optional subtitles and labels before "
-        "reducing headline size. Keep the headline dominant in the FINAL portrait-composited image. "
+        "Composition comes before styling. For EACH aspect, plan the FINAL composite including the fixed "
+        "portrait footprint if enabled. Specify title, visible primary evidence, brand and portrait regions "
+        "in canvas percentages; resolve collisions before writing the image prompt. Build one connected "
+        "composition through a shared axis, close spacing or overlap of NONCRITICAL edges. Do not scatter "
+        "small objects into opposite corners with an empty middle. The portrait-safe area forbids essential "
+        "content, not visual continuity: extend the evidence surface and background underneath it. "
+        "Title direction: preserve the exact supplied text and punctuation, but break at semantic phrase "
+        "boundaries, never at a character-count midpoint. Keep words, product names and grammatical phrases "
+        "intact; do not strand a connective or auxiliary at the end of a line. Select ONE meaningful phrase "
+        "already in the title as the focal phrase. Make its character height about 1.3-1.6 times the context "
+        "lines, using scale and one controlled contrast treatment rather than making every line equally "
+        "huge and heavy. State exact line breaks, focal phrase, character heights and line spacing. Aim for "
+        "focal character height around 10%-14% of portrait canvas height or 13%-18% of landscape height, "
+        "adjusting to fit the actual locked text and safe area. Keep the smaller title lines phone-readable. "
+        "Brand emphasis belongs in a readable logo/name lockup, not a second headline. "
+        "Evidence direction: enlarge ONE source-supported subject into the central remaining space. "
+        "Keep its important content visible after portrait compositing; reduce supporting details before "
+        "shrinking it. Crop peripheral content or overlap noncritical edges if useful. A front-facing view "
+        "is valid; use slight perspective only when it improves the composition without hiding evidence. "
+        "Preserve the source medium: a slide stays an explanatory slide or diagram; never turn it into a "
+        "fictional product dashboard. Do not invent controls, metrics, brands or result cards. "
+        "Background direction: use a light base, fine grid, restrained grain and a visible atmosphere of "
+        "1-3 named neighbouring muted hues. Place its tonal contrast behind the focal content, connecting "
+        "title and evidence. If the middle feels empty, enlarge or reposition the real subject first; "
+        "more gradients, labels and decoration are not a substitute for composition. "
+        "Optional styling: choose at most one keyword accent; serif accents, chips, arrows, extra labels, "
+        "perspective and edge cropping are tools, not mandatory ingredients. Use only those that improve "
+        "this layout. Remove optional information before reducing the title or evidence. "
         "Return strict JSON only."
     )
     user_text = f"""
@@ -974,6 +971,15 @@ Output strict JSON with this schema:
     "primary_evidence_share": "55%-75% of the screen content area",
     "phone_feed_readability_note": ""
   }},
+  "composition_plan": {{
+    "focal_phrase": "verbatim phrase from title",
+    "source_medium": "real interface / slide / diagram / other",
+    "aspects": {{
+      "3x4": {{"title_region": "", "evidence_visible_region": "", "brand_region": "", "connection": ""}},
+      "4x3": {{"title_region": "", "evidence_visible_region": "", "brand_region": "", "connection": ""}},
+      "16x9": {{"title_region": "", "evidence_visible_region": "", "brand_region": "", "connection": ""}}
+    }}
+  }},
   "cover_direction_markdown": "",
   "prompts": {{
     "3x4": {{
@@ -993,22 +999,22 @@ Output strict JSON with this schema:
 }}
 
 Important:
-- When a known title is provided, it is the final cover headline already distilled by the operator from the video content: use it as title.main essentially verbatim — you own only line breaks, typographic emphasis, and dropping a leading filler word if one slipped in. Do not rewrite it, soften it, or revert it to a generic video-title phrasing. Only when the known title is None should you distill title.main yourself from the subtitle/transcript, preferring the strongest concrete verdict in the speaker's own words.
+- When a known title is provided, it is the final cover headline already distilled by the operator from the video content: use it as title.main exactly verbatim, including punctuation — you own only semantic line breaks and typographic emphasis. Do not rewrite it, soften it, or revert it to a generic video-title phrasing. Only when the known title is None should you distill title.main yourself from the subtitle/transcript, preferring the strongest concrete verdict in the speaker's own words.
 - Choosing selected_frame is the single biggest quality lever. The candidate frames have already been locally prefiltered for technical quality (sharpness, brightness, content) and spread across the video, so they should all be reasonably crisp — spend your judgement on WHICH one best represents the subject: prefer the frame that most clearly shows the named tool/product actually in use (its real interface, panel, result, or action), fully visible, clean, and large. Still reject any that slipped through: blurry/motion-blurred, fade/transition, near-empty intros, loading states, mostly-plain-text, or frames where the main evidence is occluded, cropped, or tiny. If several frames are similar, pick the cleanest and most on-topic; list the next best ones in backup_frames.
 - The three prompts must explicitly mention exact 3:4, exact 4:3, and exact 16:9 respectively.
-- The prompts must include the mandatory visible background sentence from the rules.
-- The color_plan must follow the cover colour system from the rules: a clean light base plus a soft pastel atmosphere of 1-3 neighbouring hues, and one keyword-chip accent echoing the atmosphere. Write gradient_source as the named pastel hues (e.g. "dusty periwinkle + soft pink") and accent as the chip colour — creamy/dusty versions, never the raw saturated UI colour, never neon or full-spectrum rainbow.
+- The prompts must describe a concrete background palette and tonal placement supporting the connected composition; do not copy a stock background sentence.
+- The color_plan must follow the cover colour system from the rules: a clean light base plus a soft pastel atmosphere of 1-3 neighbouring hues, and at most one optional keyword accent echoing the atmosphere. Write gradient_source as the named pastel hues (e.g. "dusty periwinkle + soft pink") and accent as the chip colour — creamy/dusty versions, never the raw saturated UI colour, never neon or full-spectrum rainbow.
 - The prompts must tell {args.image_model} to create one complete final cover in one image.
 - The prompts must preserve real tutorial evidence from the selected frame and remove unrelated people/webcam/avatar/subtitles from the source screen and rebuilt UI.
 - {"The prompts must keep the generated base person-free and reserve the lower-right portrait overlay-safe area. For 3:4 reserve x=48%-100%, y=56%-100%; for 4:3 reserve x=60%-100%, y=37%-100%; for 16:9 reserve x=62%-100%, y=37%-100%. Put no title, logo, label, or primary evidence there. Continue only background and noncritical screen detail under it; never draw a placeholder or portrait. The local script will composite the fixed transparent paper-cut portrait after generation." if args.default_creator_portrait else "The prompts must not add a creator portrait. Keep the final cover completely person-free: no human face, no avatar, no webcam bubble, no mascot, no character, and no portrait thumbnail."}
 - {"Do not request or depend on the creator portrait as a generation reference. The portrait is applied later at a fixed layout: 3:4 = 55% canvas width, 6% past the right edge, top 58%; 4:3 = 38% canvas width, 3% past the right edge, top 40%; 16:9 = 32% canvas width, 2% inside the right edge, top 40%." if args.default_creator_portrait else "Use software UI evidence, product logo, workflow chips, cursor marks, panels, and text hierarchy as the personal-brand signal instead of any person or face."}
-- The prompts must not copy the selected screenshot as-is. They must specify a screenshot distillation plan: keep only 2-3 essential UI signals, remove noisy sidebars/long text/unrelated details, and rebuild the screen area as a clean real-feeling UI.
+- The prompts must not copy the selected screenshot as-is. They must specify a screenshot distillation plan: keep only 2-3 essential UI signals, remove noisy sidebars/long text/unrelated details, and preserve its source medium and factual meaning; explanatory slides must not become invented product UI.
 - The prompts must include a visual communication plan: the one-glance subject, the primary evidence, the maximum size of supporting evidence, and what to delete/crop if the primary evidence becomes too small.
 - If the primary evidence is a row/grid/gallery/list of result cards, cover thumbnails, generated images, or comparison examples, the prompts must make those results large and readable as the dominant gallery. Do not shrink them into a faithful full-workspace screenshot.
-- The prompts must include a title decoration plan: the title area cannot be plain text only. Add 1-2 tasteful, content-related title accents such as a subtle keyword highlight, thin underline, small workflow label, cursor mark, bracket, or UI state chip derived from the current title, screenshot, subtitle, topic, or product identity.
+- Each prompt must specify semantic line breaks, ONE focal phrase taken verbatim from the title, and its size relative to context lines. Extra decoration is optional; do not add labels to fill empty space.
 - The prompts must not ask for local post-processing.
 - {subtitle_instruction}
-- For the 4:3 and 16:9 horizontal prompts, the main title must be the first visual anchor, while the selected screen evidence remains large and readable. Treat 4:3 as the Bilibili homepage primary upload asset and 16:9 as a separate personal-space companion. All prompts must state the title size explicitly (portrait: each line spans ~90%-96% of the safe-area width; landscape: cap height ~11%-15% of canvas height) so the title cannot come out small.
+- For the 4:3 and 16:9 horizontal prompts, the main title must be the first visual anchor, while the selected screen evidence remains large and readable. Treat 4:3 as the Bilibili homepage primary upload asset and 16:9 as a separate personal-space companion. All prompts must state distinct focal/context title sizes and a feasible layout in canvas percentages, including the unobstructed evidence region after portrait compositing. Check the final thumbnail for title hierarchy, visible evidence, and disconnected empty gaps.
 """
     content: list[dict[str, Any]] = [{"type": "text", "text": user_text}]
     for item in frames:
@@ -1209,17 +1215,26 @@ def exact_title_lines(title: str) -> list[str]:
     value = " ".join(title.split())
     if not value:
         return []
-    words = value.split(" ")
-    if len(words) == 1:
-        if len(value) == 1 or re.search(r"[A-Za-z0-9]", value):
-            return [value]
-        midpoint = max(1, len(value) // 2)
-        return [value[:midpoint], value[midpoint:]]
-    split_at = min(
-        range(1, len(words)),
-        key=lambda index: abs(len(" ".join(words[:index])) - len(" ".join(words[index:]))),
-    )
-    return [" ".join(words[:split_at]), " ".join(words[split_at:])]
+    # Without a semantic plan, punctuation is a safe boundary; character counts are not.
+    parts = re.findall(r"[^，。！？；：、,!?;:]+[，。！？；：、,!?;:]*|[，。！？；：、,!?;:]+", value)
+    return parts if len(parts) > 1 else [value]
+
+
+def valid_title_lines(lines: Any, title: str) -> bool:
+    """Accept layout-only breaks without losing punctuation or splitting Latin tokens."""
+    if not isinstance(lines, list) or not lines or not all(isinstance(x, str) and x.strip() for x in lines):
+        return False
+    compact = lambda text: re.sub(r"\s+", "", text)
+    if compact("".join(lines)) != compact(title):
+        return False
+    token_spans = [(len(compact(title[:m.start()])), len(compact(title[:m.end()])))
+                   for m in re.finditer(r"[A-Za-z0-9]+(?:[._/-][A-Za-z0-9]+)*", title)]
+    boundary = 0
+    for line in lines[:-1]:
+        boundary += len(compact(line))
+        if any(start < boundary < end for start, end in token_spans):
+            return False
+    return True
 
 
 def lock_known_title(args: argparse.Namespace, analysis: dict[str, Any]) -> list[str]:
@@ -1227,11 +1242,12 @@ def lock_known_title(args: argparse.Namespace, analysis: dict[str, Any]) -> list
     if not args.title or not str(args.title).strip():
         return []
     exact_title = " ".join(str(args.title).split())
-    lines = exact_title_lines(exact_title)
     title = analysis.setdefault("title", {})
     if not isinstance(title, dict):
         title = {}
         analysis["title"] = title
+    proposed = title.get("line_breaks")
+    lines = proposed if valid_title_lines(proposed, exact_title) else exact_title_lines(exact_title)
     notes: list[str] = []
     if title.get("main") != exact_title or title.get("line_breaks") != lines:
         notes.append("locked the operator-supplied title verbatim.")
@@ -1292,7 +1308,7 @@ def hard_rule_backfill(
     The Gemini prompt is trusted to cover distillation, visual priority, crop,
     layout and decoration in one self-contained pass (see the system prompt). The
     script does not re-stack those guards; it enforces the few non-negotiables and
-    backfills the depth/colour quality cues the model skipped, so prompts stay
+    backfills the colour cues the model skipped, so prompts stay
     short and never contradict themselves.
     """
     analysis = analysis or {}
@@ -1345,41 +1361,11 @@ def hard_rule_backfill(
                                   "pale gold", "periwinkle")):
         prompt += (
             " Colour discipline: the background must carry a clearly visible soft pastel atmosphere of 1-3 "
-            "neighbouring hues blending gently at the edges or behind the screen, with one pastel keyword "
-            "chip echoing it — never neon or acid hues, fluorescent blocks, or a full-spectrum rainbow; but "
+            "neighbouring hues blending gently at the edges or behind the screen, with an optional restrained keyword "
+            "accent echoing it — never neon or acid hues, fluorescent blocks, or a full-spectrum rainbow; but "
             "never a plain colourless gray canvas either."
         )
         notes.append(f"{aspect_key}: backfilled colour discipline.")
-
-    # Screen depth crop: overflow + edge clip for the premium close-up (立体感).
-    if not any(k in low for k in ("overflow", "clipped by", "cropped by", "clip the", "crop the",
-                                  "bleed", "off the canvas", "beyond the canvas", "edge of the canvas")):
-        prompt += (
-            " Screen depth crop: the screen/browser object must intentionally overflow and be clipped by at "
-            "least one canvas edge, showing only about 80%-95% of it while keeping a visible top-left window "
-            "edge, for a premium editorial close-up with real depth; never a small fully-centered complete screenshot."
-        )
-        notes.append(f"{aspect_key}: backfilled screen overflow crop.")
-
-    # Subtle 3D perspective tilt for parallax depth (overrides the flat default).
-    if not any(k in low for k in ("perspective tilt", "3d perspective", "parallax", "tilted", "angled view", "isometric")):
-        prompt += (
-            " Perspective override: render the screen object at a subtle 3D perspective tilt of about 5-12 degrees "
-            "(seen slightly from one side, one edge nearer the viewer) for gentle parallax depth; this overrides any "
-            "front-facing-flat or 0-degree wording above. Keep UI text readable; avoid extreme skew or warping."
-        )
-        notes.append(f"{aspect_key}: backfilled subtle 3D perspective tilt.")
-
-    # Shadow with a grounding contact layer for depth.
-    if "shadow" not in low:
-        prompt += (
-            " Shadow: clean light graphite drop shadow close to `0 18px 44px rgba(30,35,40,0.10)` plus a soft "
-            "contact shadow `0 4px 12px rgba(30,35,40,0.06)` under the screen object for grounded depth."
-        )
-        notes.append(f"{aspect_key}: backfilled layered shadow.")
-    elif "contact" not in low:
-        prompt += " Add a soft contact shadow close to `0 4px 12px rgba(30,35,40,0.06)` under the screen for grounded depth."
-        notes.append(f"{aspect_key}: backfilled contact shadow.")
 
     logo_guard = product_logo_guard(logos)
     if logo_guard and "Product identity guard:" not in prompt:
