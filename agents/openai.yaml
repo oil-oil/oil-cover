@@ -1,4 +1,4 @@
 interface:
   display_name: "oil-cover"
-  short_description: "小红书 AI 工具视频封面生成、真实证据编排与双画幅交付"
-  default_prompt: "使用 $oil-cover，根据这条视频生成 3:4 和 4:3 两版封面。"
+  short_description: "AI 教程与设计分享双风格封面、真实证据与三画幅交付"
+  default_prompt: "使用 $oil-cover，根据这条视频制作封面；未指定风格时先让我选择 AI 教程或设计分享，默认生成 3:4、4:3、16:9 三版。"
