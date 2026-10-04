@@ -42,14 +42,17 @@
 
 ```bash
 npx skills add oil-oil/oil-cover
+bash "<Skill绝对目录>/setup.sh"
 ```
+
+第二条命令为脚本模式创建隔离的 `.venv`，安装本地选帧与图片处理依赖，并验证 NumPy、Pillow 和 ffmpeg；Agent 自主执行模式可以省略。重新安装 Skill 或更换 Python 后应再执行一次。可用 `PYTHON=/path/to/python3 bash "<Skill绝对目录>/setup.sh"` 指定基础 Python。
 
 运行时使用当前 Skill 目录中的脚本与资源，不要求安装到某个宿主的固定目录。`--api-key` 明文命令参数已停用；环境变量或已有私有凭据文件仍可读取。
 
 ## 用法（脚本模式）
 
 ```bash
-python3 "<Skill绝对目录>/scripts/generate_oil_cover.py" \
+"<Skill绝对目录>/.venv/bin/python3" "<Skill绝对目录>/scripts/generate_oil_cover.py" \
   --video "<视频路径>" \
   --title "<标题或主题>" \
   --topic "<补充背景>"
@@ -58,7 +61,7 @@ python3 "<Skill绝对目录>/scripts/generate_oil_cover.py" \
 截图 / 关键帧输入：
 
 ```bash
-python3 "<Skill绝对目录>/scripts/generate_oil_cover.py" \
+"<Skill绝对目录>/.venv/bin/python3" "<Skill绝对目录>/scripts/generate_oil_cover.py" \
   --image "<截图路径>" \
   --logo "<可选 Logo 路径>" \
   --title "<标题>"
@@ -78,6 +81,7 @@ python3 "<Skill绝对目录>/scripts/generate_oil_cover.py" \
 ### 依赖
 
 - Python 3.9+
+- `numpy` 与 `Pillow`（由 `setup.sh` 安装到 Skill 自己的 `.venv`）
 - `ffmpeg`（视频抽帧）
 - 一个 ZenMux 账号与 API key
 

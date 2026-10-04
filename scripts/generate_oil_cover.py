@@ -451,7 +451,11 @@ def select_timestamps_local(
         import numpy as np
         from PIL import Image
     except Exception as exc:  # pragma: no cover - dependency guard
-        raise RuntimeError(f"local frame selection needs numpy + Pillow: {exc}") from exc
+        setup = _resolve_skill_dir() / "setup.sh"
+        raise RuntimeError(
+            "local frame selection needs numpy + Pillow. "
+            f"Run: bash {setup}"
+        ) from exc
 
     want = max(2, args.frame_count)
     scan_fps = args.scan_fps if args.scan_fps and args.scan_fps > 0 else (2.0 if duration <= 300 else 1.0)
