@@ -29,8 +29,8 @@
 | | 脚本模式（默认） | Agent 自主执行 |
 | --- | --- | --- |
 | 怎么跑 | 跑 `scripts/generate_oil_cover.py` | 执行的 Agent 自己读 SOP 端到端完成 |
-| 选帧 / 分析 | ZenMux 上的 Gemini | Agent 自身多模态视觉 |
-| 生图 | ZenMux `gpt-image-2` | Agent 自带图像生成工具（图生图） |
+| 选帧 / 分析 | ZenMux `google/gemini-3.8-flash` | Agent 自身多模态视觉 |
+| 生图 | ZenMux `gpt-image-2.5-flare` | Agent 自带图像生成工具（图生图） |
 | 依赖 | Python + ffmpeg + ZenMux key | 仅需带生图工具的 Agent（如 Codex 内置 `image_gen`） |
 | 适合 | 高保真、可复现 | 零外部依赖、零 key |
 
@@ -68,7 +68,7 @@ python3 "<Skill绝对目录>/scripts/generate_oil_cover.py" \
 
 ### 配置 ZenMux key（仅脚本模式需要）
 
-脚本调用 ZenMux（Gemini 分析 + `gpt-image-2` 生图），需要 API key。按优先级读取：
+脚本调用 ZenMux（Gemini 3.8 Flash 分析 + `gpt-image-2.5-flare` 生图），需要 API key。按优先级读取：
 
 1. `ZENMUX_API_KEY` 环境变量
 2. `--api-key-file` 指定的文件；未指定时使用用户配置中的 `api_key_file`，最后回退到 `~/.config/oil-cover/zenmux_api_key`

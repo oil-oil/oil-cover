@@ -3,7 +3,7 @@
 Generate oil-cover Xiaohongshu and Bilibili covers with Zenmux.
 
 The script reads the oil-cover reference rules, asks Gemini to select/plan a
-cover, then calls gpt-image-2 to generate the final cover images.
+cover, then calls the configured image model to generate the final cover images.
 """
 
 from __future__ import annotations
@@ -52,8 +52,8 @@ def _resolve_skill_dir() -> Path:
 SKILL_DIR = _resolve_skill_dir()
 DEFAULT_RULES_FILE = SKILL_DIR / "references" / "cover-rules.md"
 DEFAULT_API_BASE = "https://zenmux.ai/api/v1"
-DEFAULT_ANALYSIS_MODEL = "google/gemini-3.5-flash"
-DEFAULT_IMAGE_MODEL = "openai/gpt-image-2"
+DEFAULT_ANALYSIS_MODEL = "google/gemini-3.8-flash"
+DEFAULT_IMAGE_MODEL = "openai/gpt-image-2.5-flare"
 
 USER_CONFIG_FILE = Path(
     os.environ.get("OIL_COVER_CONFIG", str(Path.home() / ".oil-cover" / "config.json"))
@@ -841,7 +841,7 @@ def build_analysis_messages(
             else "This cover must stay completely person-free: do not add any human, face, creator portrait, avatar, webcam bubble, mascot, or character. "
         )
         +
-        "The final image generator is Zenmux openai/gpt-image-2. The local script only extracts frames, "
+        f"The final image generator is Zenmux {args.image_model}. The local script only extracts frames, "
         "copies files, saves prompts, calls Zenmux APIs"
         +
         (
@@ -888,7 +888,9 @@ def build_analysis_messages(
         "and the 16:9 cover as a separate personal-space companion; in the 16:9 prompt use the same cap-height "
         "range and keep the title as the first anchor; "
         "when unsure, go bigger and break the title into "
-        "two short lines instead of shrinking it. "
+        "two or three short lines instead of shrinking it. Brand emphasis belongs in a readable logo/name lockup, "
+        "not an extra headline or a reason to shrink the locked title. Remove optional subtitles and labels before "
+        "reducing headline size. Keep the headline dominant in the FINAL portrait-composited image. "
         "Return strict JSON only."
     )
     user_text = f"""
@@ -996,7 +998,7 @@ Important:
 - The three prompts must explicitly mention exact 3:4, exact 4:3, and exact 16:9 respectively.
 - The prompts must include the mandatory visible background sentence from the rules.
 - The color_plan must follow the cover colour system from the rules: a clean light base plus a soft pastel atmosphere of 1-3 neighbouring hues, and one keyword-chip accent echoing the atmosphere. Write gradient_source as the named pastel hues (e.g. "dusty periwinkle + soft pink") and accent as the chip colour — creamy/dusty versions, never the raw saturated UI colour, never neon or full-spectrum rainbow.
-- The prompts must tell gpt-image-2 to create one complete final cover in one image.
+- The prompts must tell {args.image_model} to create one complete final cover in one image.
 - The prompts must preserve real tutorial evidence from the selected frame and remove unrelated people/webcam/avatar/subtitles from the source screen and rebuilt UI.
 - {"The prompts must keep the generated base person-free and reserve the lower-right portrait overlay-safe area. For 3:4 reserve x=48%-100%, y=56%-100%; for 4:3 reserve x=60%-100%, y=37%-100%; for 16:9 reserve x=62%-100%, y=37%-100%. Put no title, logo, label, or primary evidence there. Continue only background and noncritical screen detail under it; never draw a placeholder or portrait. The local script will composite the fixed transparent paper-cut portrait after generation." if args.default_creator_portrait else "The prompts must not add a creator portrait. Keep the final cover completely person-free: no human face, no avatar, no webcam bubble, no mascot, no character, and no portrait thumbnail."}
 - {"Do not request or depend on the creator portrait as a generation reference. The portrait is applied later at a fixed layout: 3:4 = 55% canvas width, 6% past the right edge, top 58%; 4:3 = 38% canvas width, 3% past the right edge, top 40%; 16:9 = 32% canvas width, 2% inside the right edge, top 40%." if args.default_creator_portrait else "Use software UI evidence, product logo, workflow chips, cursor marks, panels, and text hierarchy as the personal-brand signal instead of any person or face."}

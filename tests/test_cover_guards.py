@@ -22,6 +22,17 @@ with tempfile.TemporaryDirectory() as directory:
 
 
 class CoverGuardTests(unittest.TestCase):
+    def test_model_defaults_and_override_reach_analysis_prompt(self):
+        with patch.object(sys, "argv", ["generate_oil_cover.py", "--image", "source.png"]):
+            args = COVER.parse_args()
+        self.assertEqual(args.analysis_model, "google/gemini-3.8-flash")
+        self.assertEqual(args.image_model, "openai/gpt-image-2.5-flare")
+        args.image_model = "test/custom-image-model"
+        messages = COVER.build_analysis_messages(args, [], [], None, "", "")
+        self.assertIn("Zenmux test/custom-image-model", messages[0]["content"])
+        self.assertIn("tell test/custom-image-model", messages[1]["content"][0]["text"])
+        self.assertNotIn("openai/gpt-image-2.", messages[0]["content"])
+
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
