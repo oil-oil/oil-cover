@@ -97,19 +97,16 @@ CREATOR_PORTRAIT_LAYOUTS = {
         "width_ratio": 0.55,
         "top_ratio": 0.58,
         "right_ratio": -0.06,
-        "safe_area": "x=48%-100%, y=56%-100%",
     },
     "4x3": {
         "width_ratio": 0.38,
         "top_ratio": 0.40,
         "right_ratio": -0.03,
-        "safe_area": "x=60%-100%, y=37%-100%",
     },
     "16x9": {
         "width_ratio": 0.32,
         "top_ratio": 0.40,
         "right_ratio": 0.02,
-        "safe_area": "x=62%-100%, y=37%-100%",
     },
 }
 RETRYABLE_HTTP_CODES = {408, 429, 500, 502, 503, 504}
@@ -701,14 +698,12 @@ def creator_portrait_plan(enabled: bool, overlay: dict[str, Any] | None = None) 
             "enabled": False,
             "mode": "none",
             "placement": "none",
-            "reserve_base_area": False,
         }
     return {
         "enabled": True,
         "mode": "local_code_composite",
         "asset": str((overlay or {}).get("path", DEFAULT_CREATOR_PORTRAIT_OVERLAY["path"])),
         "placement": "lower-right, right-edge anchored, bottom-clipped",
-        "reserve_base_area": True,
         "layouts": CREATOR_PORTRAIT_LAYOUTS,
     }
 
@@ -723,9 +718,7 @@ def creator_portrait_prompt_guard(aspect_key: str) -> str:
     )
     return (
         " Local portrait composite guard: keep the generated base entirely person-free. "
-        f"Reserve the bottom-right overlay-safe area {layout['safe_area']}; do not place the title, product "
-        "logo, small labels, or primary evidence there. Continue the background and only noncritical screen "
-        "detail beneath that area; do not draw a portrait, silhouette, placeholder, empty card, webcam bubble, "
+        "Do not draw a portrait, silhouette, placeholder, empty card, webcam bubble, "
         f"avatar, mascot, or character. After generation, deterministic local code will composite {CREATOR_NAME}'s "
         f"transparent paper-cut portrait at {layout['width_ratio']:.0%} of canvas width, {right_placement}, "
         f"top {layout['top_ratio']:.0%}, with natural bottom/right edge clipping."
@@ -833,8 +826,7 @@ def build_analysis_messages(
         "and remove irrelevant navigation, long transcripts, old subtitles, random avatars, paths, timestamps, and tiny noisy text. "
         +
         (
-            "The generated base must stay completely person-free. Reserve the deterministic lower-right portrait overlay-safe "
-            "area described below so the title, logo, labels, and primary evidence remain unobstructed. Do not draw the creator, "
+            "The generated base must stay completely person-free. Do not draw the creator, "
             "a silhouette, a placeholder, an avatar, a webcam bubble, a mascot, or any other person. A local code step adds the "
             "single supplied transparent paper-cut creator portrait after generation. "
             if args.default_creator_portrait
@@ -951,7 +943,6 @@ Output strict JSON with this schema:
     "enabled": {str(bool(args.default_creator_portrait)).lower()},
     "mode": "{'local_code_composite' if args.default_creator_portrait else 'none'}",
     "placement": "{'lower-right, right-edge anchored, bottom-clipped' if args.default_creator_portrait else 'none'}",
-    "reserve_base_area": {str(bool(args.default_creator_portrait)).lower()},
     "reason": ""
   }},
   "color_plan": {{
@@ -1000,7 +991,7 @@ Important:
 - The color_plan must follow the cover colour system from the rules: a clean light base plus a soft pastel atmosphere of 1-3 neighbouring hues, and one keyword-chip accent echoing the atmosphere. Write gradient_source as the named pastel hues (e.g. "dusty periwinkle + soft pink") and accent as the chip colour — creamy/dusty versions, never the raw saturated UI colour, never neon or full-spectrum rainbow.
 - The prompts must tell {args.image_model} to create one complete final cover in one image.
 - The prompts must preserve real tutorial evidence from the selected frame and remove unrelated people/webcam/avatar/subtitles from the source screen and rebuilt UI.
-- {"The prompts must keep the generated base person-free and reserve the lower-right portrait overlay-safe area. For 3:4 reserve x=48%-100%, y=56%-100%; for 4:3 reserve x=60%-100%, y=37%-100%; for 16:9 reserve x=62%-100%, y=37%-100%. Put no title, logo, label, or primary evidence there. Continue only background and noncritical screen detail under it; never draw a placeholder or portrait. The local script will composite the fixed transparent paper-cut portrait after generation." if args.default_creator_portrait else "The prompts must not add a creator portrait. Keep the final cover completely person-free: no human face, no avatar, no webcam bubble, no mascot, no character, and no portrait thumbnail."}
+- {"The prompts must keep the generated base person-free. Never draw a placeholder or portrait. The local script will composite the fixed transparent paper-cut portrait after generation." if args.default_creator_portrait else "The prompts must not add a creator portrait. Keep the final cover completely person-free: no human face, no avatar, no webcam bubble, no mascot, no character, and no portrait thumbnail."}
 - {"Do not request or depend on the creator portrait as a generation reference. The portrait is applied later at a fixed layout: 3:4 = 55% canvas width, 6% past the right edge, top 58%; 4:3 = 38% canvas width, 3% past the right edge, top 40%; 16:9 = 32% canvas width, 2% inside the right edge, top 40%." if args.default_creator_portrait else "Use software UI evidence, product logo, workflow chips, cursor marks, panels, and text hierarchy as the personal-brand signal instead of any person or face."}
 - The prompts must not copy the selected screenshot as-is. They must specify a screenshot distillation plan: keep only 2-3 essential UI signals, remove noisy sidebars/long text/unrelated details, and rebuild the screen area as a clean real-feeling UI.
 - The prompts must include a visual communication plan: the one-glance subject, the primary evidence, the maximum size of supporting evidence, and what to delete/crop if the primary evidence becomes too small.
@@ -1400,8 +1391,7 @@ def apply_script_guards(
     Unlike the legacy link, this does NOT append distillation / visual / crop /
     decoration / layout guards onto every prompt. Those are the model's job now.
     We only enforce non-negotiables such as exact aspect, mandatory background,
-    depth cues, real logo, and the deterministic creator-overlay safe area when
-    the prompt omitted them.
+    depth cues, real logo, and the person-free base when the prompt omitted them.
     """
     if not isinstance(analysis, dict):
         return analysis
@@ -1449,7 +1439,7 @@ def apply_script_guards(
             and "Local portrait composite guard:" not in prompt
         ):
             prompt += creator_portrait_prompt_guard(key)
-            postprocess_notes.append(f"{key}: reserved deterministic creator portrait overlay area.")
+            postprocess_notes.append(f"{key}: kept the base person-free for the local portrait composite.")
 
         item["prompt"] = prompt
 

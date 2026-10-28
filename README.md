@@ -110,6 +110,10 @@ assets/product-logos/           内置 AI 产品 Logo
 
 `assets/product-logos/` 内的产品 Logo 为各自公司商标，仅作封面参考资产，**不在本项目 MIT 许可范围内**，收录于此不代表任何合作或背书。来源与归属见 [NOTICE](NOTICE)。
 
+## 适用边界与数据
+
+仅制作视频封面，不剪辑视频或操作发布平台。脚本模式向已配置服务发送候选帧、字幕和提示词，不上传整段视频；创作者头像仅在本地合成。
+
 ## License
 
 [MIT](LICENSE) © 2026 oil 欧呦

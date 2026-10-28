@@ -24,7 +24,6 @@
 
 - 源截图、重建 UI 和生图底图不保留人物。移除真人画中画、摄像头气泡、人脸、头像和人物形象；限制适用于 UI 卡片、对比图、画廊样本、嵌套截图和小预览条。
 - 配置启用头像时，最终封面只允许出现配置的一张透明头像，由代码在生图后合成；未启用时最终封面保持无人物。
-- 仅在配置启用头像时，生图底图预留头像安全区，不放标题、Logo、小标签和主证据：3:4 为 `x=48%-100%, y=56%-100%`；4:3 为 `x=60%-100%, y=37%-100%`；16:9 为 `x=62%-100%, y=37%-100%`。安全区只延续背景和非关键屏幕细节，不生成头像、轮廓、占位卡或额外容器。
 - 创作者头像是否启用及素材路径来自用户配置；公开 Skill 默认关闭。启用时的默认布局为：3:4 宽 55%、顶部 58%、向右越界 6%；4:3 宽 38%、顶部 40%、向右越界 3%；16:9 宽 32%、顶部 40%、右侧内收 2%。
 - 每张封面都要有可见的衬线字体层次，优先用于英文产品名、模型名、数字、小标签或关键词。
 - 主标题必须是第一视觉锚点。除非用户要求低调标题，标题视觉面积要明显大于普通封面。
@@ -191,8 +190,8 @@
 ## 自动质检和返工
 
 - 脚本生成完成不代表视觉验收通过。执行 Agent 逐张检查最终图，并将结论写入生成记录；没有实际检查时不宣称通过。
-- 必须修复的错误：标题、产品归因、Logo、型号或数字错误，主标题不可读，缺少要求的画幅，底图出现人物，头像缺失或遮挡关键内容。价格、跑分等数据只保留当前材料能够核对的项；不能可靠重绘时换用不含数据表的真实证据帧。
-- 配色、装饰、网格、透视和留白按本文指导生成；只要没有违反用户明确要求、遮挡内容或损害可读性，不因“还可以更好看”自动重做整套。用户要求审美调整时，以其反馈为准。
+- 必须修复的错误：标题、产品归因、Logo、型号或数字错误，主标题不可读，缺少要求的画幅，底图出现人物，配置启用的头像缺失。价格、跑分等数据只保留当前材料能够核对的项；不能可靠重绘时换用不含数据表的真实证据帧。
+- 配色、装饰、网格、透视和留白按本文指导生成；只要没有违反用户明确要求或损害底图可读性，不因“还可以更好看”自动重做整套。用户要求审美调整时，以其反馈为准。
 - 每个失败画幅默认最多自动返工一次，只修已经定位的错误，保留成功的标题、产品归因和主视觉。再次失败时交付已有可用画幅和明确缺口，不重复相同请求或宣称完成；用户明确要求继续时再生成。
 - 用户明确选择某一已有版本后，以该版为准。保留对应图片和提示词，停止未选版本的生成，不再以通用风格偏好替换用户选择。
 
@@ -202,11 +201,11 @@
 Use case: ads-marketing.
 Asset type: <Xiaohongshu exact 3:4 portrait cover / exact 4:3 horizontal primary cover for Xiaohongshu and Bilibili homepage recommendations / Bilibili exact 16:9 personal-space companion cover>.
 Input images: Image 1 is the selected real screen evidence frame. Image 2 is the product logo if provided.
-Primary request: Create one complete person-free Apple-like AI tool tutorial base cover. Preserve real product identity and tutorial evidence. Remove person, webcam bubble, old subtitles, and unrelated clutter. <If creator portrait is enabled, reserve its configured safe area for a deterministic local composite; otherwise keep the final cover person-free.>
+Primary request: Create one complete person-free Apple-like AI tool tutorial base cover. Preserve real product identity and tutorial evidence. Remove person, webcam bubble, old subtitles, and unrelated clutter. <If creator portrait is enabled, deterministic local code adds it after generation; otherwise keep the final cover person-free.>
 Content attribution: main topic is "<主主题>"; main product is "<主产品>"; host interface is "<承载界面或无>"; supporting brands are "<辅助品牌或无>".
 Title text: "<主标题>" with exact line breaks "<换行方案>"; optional short subtitle "<可选副标题>" clearly smaller than the main title; small product mark "<主产品名或 Logo>".
 Composition: <标题位置、屏幕位置、互动状态、Logo 位置、点缀类型> with strict editorial alignment and readable phone-feed hierarchy.
-Local portrait composite guard: keep the generated base entirely person-free; reserve <当前画幅安全区> for the later fixed portrait overlay; place no title, Logo, label, or primary evidence there; continue only background and noncritical screen detail; do not draw a portrait, silhouette, placeholder, empty card, webcam bubble, avatar, mascot, or character.
+Local portrait composite guard: keep the generated base entirely person-free; do not draw a portrait, silhouette, placeholder, empty card, webcam bubble, avatar, mascot, or character.
 Mandatory visible background: full-canvas clean <浅色或极浅有色纸> base, visible fine grid, a soft pastel color atmosphere of <1-3 个邻近色相, 如 dusty periwinkle + soft pink / cream + pale gold> (hues from <具体颜色来源>, softened to creamy/dusty pastel) glowing gently from <位置>, and very light grain; the atmosphere covers about <20%-40%> of the canvas and must be clearly visible yet soft.
 Colour system: <底色> base with a pastel atmosphere of <邻近色相组>, plus one keyword chip accent in <chip 颜色, 和氛围呼应>; all hues stay creamy/dusty — never neon, acid, or full-spectrum rainbow; body text stays deep graphite.
 Screen crop plan: one visible screen/browser object only; show about <比例>; offset <方向>; clip <边/角> by canvas edge, safe area, or invisible mask; keep only the screen object's own edge or browser chrome.
