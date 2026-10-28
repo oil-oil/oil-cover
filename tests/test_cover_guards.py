@@ -59,11 +59,12 @@ class CoverGuardTests(unittest.TestCase):
         }
         output = io.StringIO()
         with patch.object(sys, "argv", argv), patch.dict(os.environ, {"ZENMUX_API_KEY": ""}), \
-                patch.object(COVER, "run_analysis", return_value=copy.deepcopy(model_result)), \
+                patch.object(COVER, "run_analysis", return_value=copy.deepcopy(model_result)) as analysis_call, \
                 patch.object(COVER, "post_json", side_effect=AssertionError("不允许网络调用")), \
                 patch.object(COVER, "generate_images", side_effect=AssertionError("不允许生图调用")), \
                 redirect_stdout(output):
             COVER.main()
+        self.last_analysis_messages = analysis_call.call_args.args[2]
         manifest = json.loads(output.getvalue())
         analysis = json.loads(Path(manifest["analysis_path"]).read_text(encoding="utf-8"))
         return manifest, analysis
@@ -126,6 +127,28 @@ class CoverGuardTests(unittest.TestCase):
             with self.subTest(title=title):
                 _, analysis = self.run_pipeline(title=title)
                 self.assertEqual(analysis["title"]["line_breaks"], [title])
+
+    def test_portrait_pipeline_keeps_composite_without_reserving_layout_space(self):
+        asset = ROOT / "assets/product-logos/codex-openai.png"
+        with patch.dict(COVER.DEFAULT_CREATOR_PORTRAIT_OVERLAY, {"path": asset}):
+            manifest, analysis = self.run_pipeline(
+                extra=("--default-creator-portrait",), prompt="Create a clean cover."
+            )
+        self.assertTrue(analysis["creator_portrait_plan"]["enabled"])
+        self.assertEqual(analysis["creator_portrait_plan"]["mode"], "local_code_composite")
+        self.assertTrue(Path(manifest["creator_portrait_overlay"]["path"]).is_file())
+        outputs = [json.dumps(self.last_analysis_messages, ensure_ascii=False),
+                   json.dumps(analysis["creator_portrait_plan"])]
+        outputs.extend(Path(path).read_text() for path in manifest["prompt_sidecars"].values())
+        for text in outputs:
+            self.assertNotIn("overlay-safe", text)
+            self.assertNotIn("reserve_base_area", text)
+            self.assertNotIn("safe_area", text)
+            self.assertNotIn("x=48%-100%", text)
+            self.assertNotIn("remain unobstructed", text)
+        for prompt in analysis["prompts"].values():
+            self.assertIn("person-free", prompt["prompt"])
+            self.assertIn("deterministic local code", prompt["prompt"])
 
     def test_reapplying_guards_does_not_duplicate_title_instructions(self):
         manifest, analysis = self.run_pipeline(title="确定标题")
