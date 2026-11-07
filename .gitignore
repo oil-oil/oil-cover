@@ -14,3 +14,9 @@ __pycache__/
 # OS
 .DS_Store
 node_modules/
+
+# Local creator identities are never part of the skill
+.oil-cover/
+/profiles.json
+/avatars/
+/assets/creator/
