@@ -30,6 +30,8 @@ class CoverGuardTests(unittest.TestCase):
         args.image_model = "test/custom-image-model"
         messages = COVER.build_analysis_messages(args, [], [], None, "", "")
         self.assertIn("Zenmux test/custom-image-model", messages[0]["content"])
+        self.assertIn("16%-22%", messages[0]["content"])
+        self.assertIn("high-contrast solid rounded pill", messages[0]["content"])
         self.assertIn("tell test/custom-image-model", messages[1]["content"][0]["text"])
         self.assertNotIn("openai/gpt-image-2.", messages[0]["content"])
 
@@ -122,11 +124,58 @@ class CoverGuardTests(unittest.TestCase):
         for path in manifest["prompt_sidecars"].values():
             self.assertIn('Title text: "确定标题"', Path(path).read_text(encoding="utf-8"))
 
+    def test_chained_model_title_lines_do_not_survive_title_lock(self):
+        prompt = (
+            'Title text: "我的第一个付费 Skill" with exact line breaks "我的第一个付费 Skill" '
+            'and "上线复盘" with exact line breaks. Highlight the words "付费 Skill"; '
+            'optional short subtitle "69 元买断".'
+        )
+        manifest, _ = self.run_pipeline(title="我的第一个付费 Skill 上线复盘", prompt=prompt)
+        for path in manifest["prompt_sidecars"].values():
+            text = Path(path).read_text(encoding="utf-8")
+            self.assertNotIn('and "上线复盘" with exact line breaks', text)
+            self.assertEqual(text.count("Title text:"), 1)
+            self.assertEqual(text.count("with exact line breaks"), 1)
+            self.assertIn('optional short subtitle "69 元买断"', text)
+            self.assertIn("Apply highlights to existing title glyphs", text)
+
     def test_short_or_latin_titles_are_not_split_inside_the_word(self):
         for title in ("好", "Codex", "GPT-5.6"):
             with self.subTest(title=title):
                 _, analysis = self.run_pipeline(title=title)
                 self.assertEqual(analysis["title"]["line_breaks"], [title])
+
+    def test_model_line_breaks_preserve_the_exact_title_and_whole_identifiers(self):
+        title = "开源一个Git可视化小工具"
+        self.assertEqual(COVER.exact_title_lines(title, ["开源一个", "Git可视化小工具"]),
+                         ["开源一个", "Git可视化小工具"])
+        self.assertEqual(COVER.exact_title_lines("Git 可视化", ["Git", "可视化"]),
+                         ["Git", "可视化"])
+        for lines in (["开源一个", "Git可视化小工具", "Git可视化小工具"],
+                      ["开源一个Gi", "t可视化小工具"]):
+            self.assertEqual(COVER.exact_title_lines(title, lines), [title])
+        self.assertEqual(COVER.exact_title_lines("GPT-5.6", ["GPT-", "5.6"]), ["GPT-5.6"])
+
+    def test_numbered_title_lines_are_replaced_as_one_clause(self):
+        title = "开源一个Git可视化小工具"
+        analysis = {
+            "title": {"main": title, "line_breaks": ["开源一个", "Git可视化小工具"]},
+            "prompts": {aspect: {"prompt":
+                'Title text: "开源一个" on line 1, "Git可视化小工具" on line 2, '
+                'with a smaller subtitle "查看分支和代码变更". Composition: real branch graph.'}
+                for aspect in ("3x4", "4x3", "16x9")},
+        }
+        args = type("Args", (), {"title": title})()
+        COVER.lock_known_title(args, analysis)
+        for item in analysis["prompts"].values():
+            self.assertNotIn("on line", item["prompt"])
+            self.assertEqual(item["prompt"].count("Title text:"), 1)
+            self.assertEqual(item["prompt"].count("with exact line breaks"), 1)
+            self.assertIn('with a smaller subtitle "查看分支和代码变更"', item["prompt"])
+            self.assertIn("Composition: real branch graph.", item["prompt"])
+        before = copy.deepcopy(analysis)
+        COVER.lock_known_title(args, analysis)
+        self.assertEqual(analysis, before)
 
     def test_portrait_pipeline_keeps_composite_without_reserving_layout_space(self):
         asset = ROOT / "assets/product-logos/codex-openai.png"

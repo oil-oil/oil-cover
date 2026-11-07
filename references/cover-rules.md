@@ -79,7 +79,7 @@
 - 这是 B 站首页推荐主封面，也是 `video-publisher` 默认上传给 B 站的源文件；B 站当前建议尺寸至少 `1200x900`。
 - 标题必须作为第一视觉锚点，不能变成左侧小标签。
 - 标题和屏幕都要足够大，横版建议标题区约占画面宽度 45%-55%，屏幕证据约占画面宽度 45%-55%，两者可轻微重叠。
-- 横版主标题每行字高约占画面高度 11%-15%，标题块整体（含副标题和装饰）约占画面高度 35%-50%；每行 3-6 个字断行，不要压成一行小字。
+- 横版主标题每行字高约占画面高度 16%-22%，标题块整体（含副标题和装饰）约占画面高度 48%-62%；严格断为 2 行，每行 3-5 个字（严禁单行超过 5 个汉字导致字号缩小）。
 - 屏幕可以更完整，保留清楚的浏览器或工具界面证据。
 - 横版可以加入克制点缀，点缀类型由当前内容决定，用来强化标题阅读、界面状态或屏幕关键区域。
 - 点缀要来自主题逻辑，并且能让读者更快理解当前工作流。
@@ -90,7 +90,7 @@
 - 这是 B 站个人空间伴随版，不作为默认上传源；B 站发布默认上传独立生成的 4:3 首页主封面。
 - 标题必须作为第一视觉锚点，屏幕证据保持大且可读；利用额外横向空间延展背景和次要画面。
 - 标题区建议约占画面宽度 38%-48%，屏幕证据约占画面宽度 52%-62%，两者可轻微重叠。
-- 主标题每行字高约占画面高度 11%-15%，每行 3-7 个字断行，避免压成贯穿整张封面的一行小字。
+- 主标题每行字高约占画面高度 16%-22%，严格断为 2 行、每行 3-5 个字，让两行超大字撑满左侧视觉重心。
 - 构图要兼顾 B 站信息流缩略图：标题、产品 Logo 和关键结果远离边缘，主证据在缩小后仍能被识别。
 
 ## 屏幕物件
@@ -117,6 +117,7 @@
 - 如果原截图信息很多，优先使用“局部放大 + 少量关键卡片 + 空白留白”的方式重组，不要追求完整还原。
 - 必须保留真实实操感、产品识别和关键操作逻辑。
 - 不要生成假 UI，不要乱改关键文字，不要把真实流程改成无关页面。
+- 命令、参数、API 名称和执行结果必须逐字来自当前证据；截图中没有或看不清时省略，不凭工具名称补出看似合理的命令。
 
 ## 封面色彩体系
 
@@ -124,8 +125,8 @@
 - 底色用暖白、冷白、浅灰其一，也可以是极浅的有色纸（淡奶油、淡雾蓝、淡藕粉等）。
 - 背景必须有可感知的柔和色彩氛围，不能素到接近纯灰白、像没设计过的表单页。氛围层允许 1-3 个同家族或邻近色相柔和融合（例如雾蓝+淡紫+浅粉、奶油+淡金），像纸上晕染的柔光，放在边缘、角落或屏幕后方，覆盖约 20%-40% 画面。
 - 氛围层色调统一走「粉调/灰调/奶油调」：高明度、中低饱和、柔和不刺眼；色相之间过渡要柔，不能出现生硬分界。
-- 强调色给关键词 chip、高亮、小标签用：中等饱和、干净明亮但不刺眼，色相要和氛围层呼应；chip 是均匀扁平、轻圆角的浅彩色贴片，边缘干净，不是喷雾光斑。
-- 荧光绿、酸性黄绿、电光蓝等高饱和高亮度纯色，禁止用于背景和大面积高亮；UI 品牌色要先调成粉调/灰调再进外层。
+- 强调色用于主标题第二行的实心大胶囊（Solid High-Contrast Pill）与标题下划线：采用饱满、高对比度的实心色彩（如珊瑚红 `#F26B5B`、活力暖橙 `#F07B3F`、复古翠绿 `#2E8B57` 或深邃钴蓝 `#3B66F5`）配纯白粗体大字（`#FFFFFF`），边缘干净利落，在浅色纸面背景上形成强缩略图焦点。
+- 荧光绿、酸性黄绿、电光蓝等刺眼荧光色，禁止用于大面积背景；背景氛围保持粉调/灰调/奶油调。
 - 禁止全光谱彩虹（红橙黄绿蓝紫俱全）、高饱和霓虹渐变、喷雾状光斑团和脏灰浊色。邻近色相的柔和 pastel 过渡是允许且鼓励的。
 - 调色约束只管外层设计色：背景、标题高亮、点缀、小标签。屏幕证据内部的 UI 原色不受限制，真实截图该什么色就什么色。
 - 颜色的气质基准：像纸面印刷和晕染的柔和油墨，不像屏幕发光。
@@ -148,7 +149,8 @@
 - 字体最多 2-3 种层次：主标题、衬线强调、小标签或英文注释。
 - 衬线优先给语义关键词：产品名、工具名、模型名、关键概念、数字编号。
 - 中英文混排要统一字重、基线、深色和行距。
-- Agent 自拟主标题时默认 4-10 个字，优先表达结果、动作或痛点。用户指定标题或要求使用文件名时保留完整文字、型号和标点，通过断行适配画幅，不套用此长度建议。
+- Agent 自拟主标题时默认 6-10 个字（严格断为 2 行 × 3-5 字，最佳 4+4 字），优先表达结果、动作或痛点；长英文品牌名或 Skill 名拆为上方独立小标，不塞进主标题行内挤小字号。用户指定标题或要求使用文件名时保留完整文字、型号和标点，通过断行适配画幅，不套用此长度建议。
+- 定稿主标题只保留一套断行指令。逐行连接后必须与定稿原文一致，不因关键词高亮、chip 或小标签重复标题词；强调词跨行时只在原有字形上分段加样式，不另写一份。
 - 可以加一句短副标题，明显小于主标题，只补一个动作、判断或边界，不写解释段落。当用户要求”只要标题””不需要副标题”时，外层只保留主标题。
 - 标题装饰和副标题不是一回事。副标题可以解释内容，标题装饰负责让标题区域更有视觉层次，例如轻高亮、细标记、小标签、光标点或局部界面状态。
 - Agent 自拟文字不使用夸张词、感叹号或 hashtag，不堆 3 个以上小标签；用户已经指定的标题原文优先。
@@ -157,13 +159,11 @@
 ## 关键词和点缀
 
 - 一张封面最多 1-2 个强调区域，优先给产品名、工具名、模型名或关键动作词。
-- 关键词强调优先做成浅彩色圆角 chip：一层均匀扁平、轻圆角的 pastel 贴片把整个关键词包住，色相和氛围层呼应（如淡紫蓝、淡粉、奶油黄），边缘干净；不是喷雾状光斑、发光渐变团或霓虹辉光。
-- 其他强调方式可选柔和背景高亮、雾面高亮、透明玻璃、细描边、局部反白或小面积低透明渐变。取样色或产品色必须按「封面色彩体系」调柔后作为材质层使用。
-- 标题区的设计感来自成套的编辑元素：关键词 pastel chip、胶囊小标签、细箭头或流程线、衬线斜体强调、小 Logo 角标。默认组合使用其中 2-3 个，彼此对齐在同一套网格上，不要只落一个孤立的装饰。
-- 关键词强调必须写清具体词、材质、颜色来源和强度。
-- 大标题主体默认保持深色或柔和黑；不要把整行大字直接染成高饱和彩色。
-- 柔和背景高亮应像一层低透明、轻圆角、贴在字后方的材质，不像按钮、胶囊标签、广告 CTA 或独立贴纸。
-- 不要把关键词做成亮色按钮、大胶囊、独立贴纸、广告 CTA 或整词炫彩渐变。
+- **第一视觉抓手：高对比度实心大胶囊（Solid High-Contrast Pill + 纯白粗体大字）**：
+  - 默认将主标题的第二行（或最核心的 3-5 字结果/动作词）放进一个**饱满、高对比度的实心圆角大胶囊（Solid Pill Capsule，如珊瑚红 Coral Red `#F26B5B`、活力暖橙 Warm Amber `#F07B3F`、复古翠绿 Emerald `#2E8B57` 或深邃钴蓝 Cobalt `#3B66F5`，内部文字使用纯白粗体 `#FFFFFF`）**。
+  - 第一行保持深石墨黑粗体大字（`#1E2328`），可在关键词下方加一条同色系的手绘感粗下划线（brush underline），并在实心大胶囊右侧点缀 2 笔简洁的强调短线（impact ticks），形成强烈、鲜明、一眼抓人的缩略图视觉重心。
+- **屏幕内部保留高对比视觉重音**：
+  - 当外层背景是浅暖白纸面时，右侧屏幕窗口切忌重绘成全灰白的平淡线框；必须保留或强化真实截图里的深色模块（如深色卡片、深色多轨时间轴、深色编辑器面板）、高亮图表色块或鲜明的状态标记，让右侧屏幕与左侧浅色背景形成清晰的明暗与色彩反差。
 - 装饰必须来自内容逻辑，优先使用当前截图或当前主题自然出现的界面状态、关键词、按钮、路径、URL 或光标状态。
 - 点缀里的文字、品牌名、模型名和小标签只能来自当前内容归因。不要使用历史测试案例里的固定词。
 - 坐标点、玻璃标签和悬浮说明框容易显乱，只有能直接解释画面时才加入。
@@ -207,14 +207,14 @@ Title text: "<主标题>" with exact line breaks "<换行方案>"; optional shor
 Composition: <标题位置、屏幕位置、互动状态、Logo 位置、点缀类型> with strict editorial alignment and readable phone-feed hierarchy.
 Local portrait composite guard: keep the generated base entirely person-free; do not draw a portrait, silhouette, placeholder, empty card, webcam bubble, avatar, mascot, or character.
 Mandatory visible background: full-canvas clean <浅色或极浅有色纸> base, visible fine grid, a soft pastel color atmosphere of <1-3 个邻近色相, 如 dusty periwinkle + soft pink / cream + pale gold> (hues from <具体颜色来源>, softened to creamy/dusty pastel) glowing gently from <位置>, and very light grain; the atmosphere covers about <20%-40%> of the canvas and must be clearly visible yet soft.
-Colour system: <底色> base with a pastel atmosphere of <邻近色相组>, plus one keyword chip accent in <chip 颜色, 和氛围呼应>; all hues stay creamy/dusty — never neon, acid, or full-spectrum rainbow; body text stays deep graphite.
+Colour system: <底色> base with a pastel atmosphere of <邻近色相组>, plus one bold high-contrast solid rounded pill capsule on line 2 of the title in <饱满实心强调色, 如 coral red #F26B5B / warm amber #F07B3F / cobalt #3B66F5 / emerald #2E8B57> with bold pure white text (#FFFFFF); line 1 stays deep graphite (#1E2328).
 Screen crop plan: one visible screen/browser object only; show about <比例>; offset <方向>; clip <边/角> by canvas edge, safe area, or invisible mask; keep only the screen object's own edge or browser chrome.
-Screenshot distillation plan: treat the selected screenshot as evidence source, not a full screenshot to copy; extract only <2-3 个关键证据>; remove <侧栏/长文/字幕/头像/无关小字/路径/通知/状态栏>; rebuild the screen area as a simplified real-feeling UI with generous whitespace and a clear focal hierarchy.
+Screenshot distillation plan: treat the selected screenshot as evidence source, not a full screenshot to copy; extract only <2-3 个关键证据>; remove <侧栏/长文/字幕/头像/无关小字/路径/通知/状态栏>; rebuild the screen area as a simplified real-feeling UI with generous whitespace, high-contrast dark cards or highlight bars, and a clear focal hierarchy.
 Visual communication plan: one-glance subject is <0.5 秒内要读者看到的结果>; primary evidence is <最能证明结果的区域>; make it occupy <55%-75%> of the screen content area; supporting evidence is <辅助 UI> and must stay below <15%-30%>; sacrifice <可以删掉/裁掉/弱化的信息> if it makes the primary evidence smaller.
 Screen refinement plan: refine and recompose the screen content by <强化重点>; clean <字幕/人像/杂边/冗余文字>; preserve <产品名/命令/关键 UI 状态>.
 Shadow plan: screen object only, clean light graphite shadow close to `0 18px 44px rgba(30,35,40,0.10)` plus soft contact shadow close to `0 4px 12px rgba(30,35,40,0.06)`.
 Text style: Chinese main title uses fixed Apple-like PingFang SC / SF Pro CJK; visible restrained serif accent on "<具体词>"; colors: <每段文字颜色>; no random colored words.
-Title decoration: add <1-2 个内容相关标题装饰>, such as a subtle highlight behind "<关键词>", a tiny "<当前内容小标签>", a cursor mark, bracket, or UI state chip; it must be aligned to the title grid and help readers understand this exact workflow.
+Title decoration: enclose line 2 ("<第二行核心词>") in a bold high-contrast solid rounded pill capsule with pure white bold text (#FFFFFF), add a matching brush underline under "<第一行关键词>" and 2 subtle impact ticks beside the pill, plus a tiny "<当前内容小标签>" or product mark aligned to the title grid.
 Decoration: <1-2 个内容相关点缀>, subtle, aligned, useful for reading the current topic.
 Avoid: full screenshot copy, unfiltered raw screenshot, sidebar history list, long chat transcript, dense tiny text, extra showcase frame, white backing card, phone frame, device shell, second container, fake UI, person/avatar/face, watermark, hashtags, unrelated logo, low-resolution artifacts, acid or neon hues, fluorescent color blocks, full-spectrum rainbow gradient, plain colorless background, neon cyberpunk, heavy black shadow.
 ```

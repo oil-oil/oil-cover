@@ -853,18 +853,19 @@ def build_analysis_messages(
         "same instruction in different words, do not give conflicting numbers or directions, and never rely "
         "on post-processing to fix the prompt. Prefer a tight, unambiguous prompt over a long padded one. "
         "Visual quality bar, fold these naturally into the one prompt without padding: "
-        "(1) design an intentional colour scheme with real atmosphere: a clean light base (white, light "
-        "gray, or a very pale tinted paper) carrying a soft pastel colour atmosphere of 1-3 neighbouring "
-        "hues that blend gently at the edges/corners/behind the screen — name the hues explicitly, for "
-        "example dusty periwinkle + soft pink, or cream + pale gold. Sample hues from the frame or logo "
-        "but soften them to a creamy/dusty pastel; never the raw high-saturation UI colour (no acid lime, "
-        "no neon green, no electric blue, no fluorescent blocks) and never a full-spectrum rainbow. The "
-        "atmosphere must be clearly visible — a nearly colorless gray canvas reads as unfinished — yet "
-        "stay soft and airy. Pair it with one pastel keyword chip on the title whose hue echoes the "
-        "atmosphere; "
+        "(1) design an intentional colour scheme with real atmosphere and a high-contrast focal point: "
+        "a clean light base (white, light gray, or a very pale tinted paper) carrying a soft pastel colour "
+        "atmosphere of 1-3 neighbouring hues that blend gently at the edges/corners/behind the screen — name "
+        "the hues explicitly, for example dusty periwinkle + soft pink, or cream + pale gold. Sample atmosphere "
+        "hues from the frame or logo and soften them to a creamy/dusty pastel (never acid/neon or full-spectrum "
+        "rainbow on the background). Pair that soft background with ONE bold, high-contrast solid rounded pill "
+        "capsule enclosing line 2 of the title (e.g., vibrant coral red #F26B5B, warm amber #F07B3F, deep cobalt "
+        "#3B66F5, or rich emerald #2E8B57) with bold pure white text (#FFFFFF) inside, while line 1 stays deep "
+        "graphite (#1E2328) with a matching brush underline and 2 subtle impact ticks beside the pill; "
         "(2) make the screen/browser object intentionally overflow and get clipped by at least one canvas "
         "edge, showing only about 80%-95% of it while keeping a visible top-left window edge, for a premium "
-        "editorial close-up with real depth, never a small fully-centered complete screenshot; "
+        "editorial close-up with real depth, never a small fully-centered complete screenshot; preserve high-contrast "
+        "dark cards, timelines, or highlight bars inside the screen so it pops against the light background; "
         "(3) ground the screen with a soft graphite drop shadow plus a subtle contact shadow; "
         "(4) when the evidence is a row of cards or thumbnails, show 3 oversized cards fully plus a 4th "
         "clipped at the edge, not a flat strip of small ones; "
@@ -874,13 +875,13 @@ def build_analysis_messages(
         "0-degree rotation / no diagonal edge' default in the rules; keep all UI text readable and avoid "
         "extreme skew, fisheye, warping, or heavy rotation; "
         "(6) make the main title unmistakably large — the covers live in phone and desktop feeds: in the 3:4 portrait "
-        "prompt each title line spans about 90%-96% of the safe-area width with a cap height around 8%-12% "
-        "of the canvas height; in the 4:3 landscape prompt each title line's cap height is about 11%-15% of "
-        "the canvas height with 3-6 characters per line; treat the 4:3 cover as the Bilibili homepage primary "
-        "and the 16:9 cover as a separate personal-space companion; in the 16:9 prompt use the same cap-height "
+        "prompt each title line spans about 90%-96% of the safe-area width with a cap height around 10%-14% "
+        "of the canvas height; in the 4:3 landscape prompt each title line's cap height is about 16%-22% of "
+        "the canvas height with strictly 2 short lines of 3-5 characters per line; treat the 4:3 cover as the Bilibili homepage primary "
+        "and the 16:9 cover as a separate personal-space companion; in the 16:9 prompt use the same 16%-22% cap-height "
         "range and keep the title as the first anchor; "
         "when unsure, go bigger and break the title into "
-        "two or three short lines instead of shrinking it. Brand emphasis belongs in a readable logo/name lockup, "
+        "two short lines instead of shrinking it. Brand emphasis belongs in a readable logo/name lockup above the title, "
         "not an extra headline or a reason to shrink the locked title. Remove optional subtitles and labels before "
         "reducing headline size. Keep the headline dominant in the FINAL portrait-composited image. "
         "Return strict JSON only."
@@ -988,18 +989,18 @@ Important:
 - Choosing selected_frame is the single biggest quality lever. The candidate frames have already been locally prefiltered for technical quality (sharpness, brightness, content) and spread across the video, so they should all be reasonably crisp — spend your judgement on WHICH one best represents the subject: prefer the frame that most clearly shows the named tool/product actually in use (its real interface, panel, result, or action), fully visible, clean, and large. Still reject any that slipped through: blurry/motion-blurred, fade/transition, near-empty intros, loading states, mostly-plain-text, or frames where the main evidence is occluded, cropped, or tiny. If several frames are similar, pick the cleanest and most on-topic; list the next best ones in backup_frames.
 - The three prompts must explicitly mention exact 3:4, exact 4:3, and exact 16:9 respectively.
 - The prompts must include the mandatory visible background sentence from the rules.
-- The color_plan must follow the cover colour system from the rules: a clean light base plus a soft pastel atmosphere of 1-3 neighbouring hues, and one keyword-chip accent echoing the atmosphere. Write gradient_source as the named pastel hues (e.g. "dusty periwinkle + soft pink") and accent as the chip colour — creamy/dusty versions, never the raw saturated UI colour, never neon or full-spectrum rainbow.
+- The color_plan must follow the cover colour system from the rules: a clean light base plus a soft pastel atmosphere of 1-3 neighbouring hues on the background, paired with a bold, high-contrast solid pill capsule on line 2 of the title (e.g. coral red #F26B5B, warm amber #F07B3F, cobalt #3B66F5, or emerald #2E8B57) with pure white bold text (#FFFFFF). Write gradient_source as the named pastel background hues (e.g. "dusty periwinkle + soft pink") and accent as the solid pill colour.
 - The prompts must tell {args.image_model} to create one complete final cover in one image.
 - The prompts must preserve real tutorial evidence from the selected frame and remove unrelated people/webcam/avatar/subtitles from the source screen and rebuilt UI.
 - {"The prompts must keep the generated base person-free. Never draw a placeholder or portrait. The local script will composite the fixed transparent paper-cut portrait after generation." if args.default_creator_portrait else "The prompts must not add a creator portrait. Keep the final cover completely person-free: no human face, no avatar, no webcam bubble, no mascot, no character, and no portrait thumbnail."}
 - {"Do not request or depend on the creator portrait as a generation reference. The portrait is applied later at a fixed layout: 3:4 = 55% canvas width, 6% past the right edge, top 58%; 4:3 = 38% canvas width, 3% past the right edge, top 40%; 16:9 = 32% canvas width, 2% inside the right edge, top 40%." if args.default_creator_portrait else "Use software UI evidence, product logo, workflow chips, cursor marks, panels, and text hierarchy as the personal-brand signal instead of any person or face."}
-- The prompts must not copy the selected screenshot as-is. They must specify a screenshot distillation plan: keep only 2-3 essential UI signals, remove noisy sidebars/long text/unrelated details, and rebuild the screen area as a clean real-feeling UI.
+- The prompts must not copy the selected screenshot as-is. They must specify a screenshot distillation plan: keep only 2-3 essential UI signals, remove noisy sidebars/long text/unrelated details, and rebuild the screen area as a clean real-feeling UI that retains high-contrast dark cards, timelines, or highlight bars against the light background.
 - The prompts must include a visual communication plan: the one-glance subject, the primary evidence, the maximum size of supporting evidence, and what to delete/crop if the primary evidence becomes too small.
 - If the primary evidence is a row/grid/gallery/list of result cards, cover thumbnails, generated images, or comparison examples, the prompts must make those results large and readable as the dominant gallery. Do not shrink them into a faithful full-workspace screenshot.
-- The prompts must include a title decoration plan: the title area cannot be plain text only. Add 1-2 tasteful, content-related title accents such as a subtle keyword highlight, thin underline, small workflow label, cursor mark, bracket, or UI state chip derived from the current title, screenshot, subtitle, topic, or product identity.
+- The prompts must include a title decoration plan: enclose line 2 of the title in a bold, high-contrast solid rounded pill capsule with pure white bold text (#FFFFFF), keep line 1 in deep graphite (#1E2328) with a matching brush underline under the key term, and add 1-2 content-related accents such as subtle impact ticks beside the pill or a small product/workflow label above the title.
 - The prompts must not ask for local post-processing.
 - {subtitle_instruction}
-- For the 4:3 and 16:9 horizontal prompts, the main title must be the first visual anchor, while the selected screen evidence remains large and readable. Treat 4:3 as the Bilibili homepage primary upload asset and 16:9 as a separate personal-space companion. All prompts must state the title size explicitly (portrait: each line spans ~90%-96% of the safe-area width; landscape: cap height ~11%-15% of canvas height) so the title cannot come out small.
+- For the 4:3 and 16:9 horizontal prompts, the main title must be the first visual anchor, while the selected screen evidence remains large and readable. Treat 4:3 as the Bilibili homepage primary upload asset and 16:9 as a separate personal-space companion. All prompts must state the title size explicitly (portrait: each line spans ~90%-96% of the safe-area width with cap height ~10%-14%; landscape: cap height ~16%-22% of canvas height, strictly 2 short lines of 3-5 characters each, with line 2 enclosed in a bold high-contrast solid colour pill with white text) so the title cannot come out small.
 """
     content: list[dict[str, Any]] = [{"type": "text", "text": user_text}]
     for item in frames:
@@ -1195,11 +1196,32 @@ def strip_external_subtitle(prompt: str) -> str:
     return prompt.strip()
 
 
-def exact_title_lines(title: str) -> list[str]:
+def exact_title_lines(title: str, suggested_lines: Any = None) -> list[str]:
     """Split a locked operator title without dropping or rewriting any text."""
     value = " ".join(title.split())
     if not value:
         return []
+    if isinstance(suggested_lines, list) and suggested_lines and all(
+        isinstance(line, str) and line.strip() for line in suggested_lines
+    ):
+        candidates = [" ".join(line.split()) for line in suggested_lines]
+        position = 0
+        valid = True
+        for index, line in enumerate(candidates):
+            if not value.startswith(line, position):
+                valid = False
+                break
+            position += len(line)
+            if index < len(candidates) - 1:
+                if value[position:position + 1] == " ":
+                    position += 1
+                elif re.search(r"[A-Za-z0-9_.-]$", line) and re.match(
+                    r"[A-Za-z0-9_.-]", candidates[index + 1]
+                ):
+                    valid = False
+                    break
+        if valid and position == len(value):
+            return candidates
     words = value.split(" ")
     if len(words) == 1:
         if len(value) == 1 or re.search(r"[A-Za-z0-9]", value):
@@ -1218,11 +1240,11 @@ def lock_known_title(args: argparse.Namespace, analysis: dict[str, Any]) -> list
     if not args.title or not str(args.title).strip():
         return []
     exact_title = " ".join(str(args.title).split())
-    lines = exact_title_lines(exact_title)
     title = analysis.setdefault("title", {})
     if not isinstance(title, dict):
         title = {}
         analysis["title"] = title
+    lines = exact_title_lines(exact_title, title.get("line_breaks"))
     notes: list[str] = []
     if title.get("main") != exact_title or title.get("line_breaks") != lines:
         notes.append("locked the operator-supplied title verbatim.")
@@ -1234,20 +1256,44 @@ def lock_known_title(args: argparse.Namespace, analysis: dict[str, Any]) -> list
         f"{json.dumps(chr(10).join(lines), ensure_ascii=False)}"
     )
     quoted_text = r'''(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')'''
+    # Consume the complete title clause, including model-specific "on line N"
+    # syntax. Quoted tokens protect decimal points and punctuation in titles.
+    clause_boundary = (
+        r"(?:[,;]\s*|\s+)(?:with\s+)?(?:a\s+)?"
+        r"(?:(?:optional|short|smaller|external)\s+)*subtitle\b"
+        r"|[.;](?=\s|$)|\n"
+        r"|\b(?:Composition|Colour system|Color system|Text style|Title decoration):"
+    )
+    title_clause = rf"Title text:\s*(?:{quoted_text}|(?!{clause_boundary}).)*"
+    title_rendering_guard = (
+        "Title rendering guard: render only the locked title text, with each word appearing "
+        "only as often as in that title. Apply highlights to existing title glyphs; do not add "
+        "another copy of a title word in a chip, badge, or decoration. If an emphasized phrase "
+        "crosses a title line break, style its existing fragments in place."
+    )
     prompts = analysis.get("prompts", {})
     if isinstance(prompts, dict):
         for key, item in prompts.items():
             if not isinstance(item, dict):
                 continue
             prompt = str(item.get("prompt", ""))
+            replacements = 0
+
+            def replace_title(_match: re.Match[str]) -> str:
+                nonlocal replacements
+                replacements += 1
+                return title_instruction if replacements == 1 else ""
+
             locked, count = re.subn(
-                rf"Title text:\s*{quoted_text}(?:\s+with exact line breaks\s*{quoted_text})?",
-                lambda _match: title_instruction,
+                title_clause,
+                replace_title,
                 prompt,
-                flags=re.I,
+                flags=re.I | re.S,
             )
             if not count:
                 locked = title_instruction + ".\n" + prompt
+            if title_rendering_guard not in locked:
+                locked += "\n" + title_rendering_guard
             if locked != prompt:
                 item["prompt"] = locked
                 notes.append(f"{key}: locked exact title text in generation prompt.")
