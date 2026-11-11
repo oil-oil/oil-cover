@@ -104,19 +104,20 @@ python3 "$OIL_COVER_SCRIPT" \
   --composite-base "$RUN_DIR/3x4.generated-base.png" \
   --composite-aspect 3x4 \
   --composite-output "$VIDEO_DIR/${VIDEO_STEM}_3x4.png" \
-  > "$RUN_DIR/3x4.portrait-composite.json"
-
+  > "$RUN_DIR/3x4.portrait-composite.json" &
 python3 "$OIL_COVER_SCRIPT" \
   --composite-base "$RUN_DIR/4x3.generated-base.png" \
   --composite-aspect 4x3 \
   --composite-output "$VIDEO_DIR/${VIDEO_STEM}_4x3.png" \
-  > "$RUN_DIR/4x3.portrait-composite.json"
-
-python3 "$OIL_COVER_SCRIPT" \
-  --composite-base "$RUN_DIR/16x9.generated-base.png" \
-  --composite-aspect 16x9 \
-  --composite-output "$VIDEO_DIR/${VIDEO_STEM}_16x9.png" \
-  > "$RUN_DIR/16x9.portrait-composite.json"
+  > "$RUN_DIR/4x3.portrait-composite.json" &
+if [ -f "$RUN_DIR/16x9.generated-base.png" ]; then
+  python3 "$OIL_COVER_SCRIPT" \
+    --composite-base "$RUN_DIR/16x9.generated-base.png" \
+    --composite-aspect 16x9 \
+    --composite-output "$VIDEO_DIR/${VIDEO_STEM}_16x9.png" \
+    > "$RUN_DIR/16x9.portrait-composite.json" &
+fi
+wait
 ```
 
 头像是否启用及素材路径来自用户配置。启用时的固定布局参数为：3:4 头像宽 55%、顶部 58%、向右越界 6%；4:3 头像宽 38%、顶部 40%、向右越界 3%；16:9 头像宽 32%、顶部 40%、右侧内收 2%。不要为单次任务临时手调；用户明确要求修改默认时更新用户配置。
@@ -134,7 +135,7 @@ python3 "$OIL_COVER_SCRIPT" \
 - 生图工具必须一次性生成完整无人物底图；配置启用头像时，本地后处理只允许调用第 7 步合成该头像。不要本地贴字、贴 Logo、拼其他图片、重排、裁切改版或视觉修补。
 - 源截图、重建 UI 和底图不保留人物、人脸、头像、摄像头气泡和真人画中画；配置启用头像时，最终图只允许出现代码合成的这一张头像，否则最终图保持无人物。
 - 绝对不要把历史案例或上一次任务里的产品名、模型名、关键词、品牌色和点缀带入当前封面；所有外层文字和点缀只能来自当前视频、当前标题、当前字幕、当前截图或当前用户补充信息。
-- 默认同时交付 `3:4`、`4:3` 和 `16:9` 三版；单独重跑时只生成指定画幅。
+- 默认同时交付 `3:4`、`4:3` 和 `16:9` 三版；上游流程明确指定所需画幅集合（如仅生成 `3:4` + `4:3`）或单独重跑时，只生成指定画幅。
 - 生图前必存 `.prompt.md` sidecar；生成后保留 `analysis.md`、`cover_plan.md`、三份 prompt、生成记录和最终图片。
 - 分析、方案和提示词只写当前选定版本的状态；旧候选及其提示词单独保存，切换版本时成套切换，不把正式文档写成修改历史。
 - 本模式不用 ZenMux key；若执行环境用到任何 key，不得写进 prompt、sidecar、日志或最终回复。

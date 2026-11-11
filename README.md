@@ -6,20 +6,11 @@
 
 > 作者：oil 欧呦（[@oil-oil](https://github.com/oil-oil)）
 
-## 封面示例
-
-<p align="center">
-  <img src="docs/showcase/gallery.png" width="860">
-</p>
-<p align="center">
-  <img src="docs/showcase/gallery-4x3.png" width="640">
-</p>
-
 ## 特点
 
-- **视频选帧**：本地扫描和评分筛出高清候选帧，再由多模态模型按语义选择，不上传整段视频。
+- **高速视频选帧**：本地多线程快速扫描和评分筛出高清候选帧，再由多模态模型按语义选择，不上传整段视频。
 - **完整视觉规范**：`references/cover-rules.md` 覆盖构图、背景层、字体标题、点缀、自动质检和提示词骨架。
-- **默认三画幅**：并行出小红书 `3:4` 竖版、B 站首页主封面 `4:3` 横版和个人空间伴随版 `16:9` 横版。
+- **三画幅与按需子集并行**：默认并行生成小红书 `3:4` 竖版、通用/B 站首页主封面 `4:3` 横版和 `16:9` 横版；也支持 `--aspect both`（`3:4` + `4:3`）、单画幅或逗号组合（如 `3x4,4x3`），出图线程内自动流式完成可选头像合成并落盘进度文件（`.oil-cover/generation_state.json` 或 `--cover-state-file`）。
 - **产品 Logo 自动匹配**：内置 Claude / Codex / Cursor / Gemini / GitHub 等常用 AI 产品 Logo。
 
 已指定的封面标题会锁定到分析与各画幅提示词中。有标题或主题时，Logo 匹配不再回退到字幕里的次要品牌；没有可信资产时使用产品名和真实界面建立识别。新增参考资产见 [资产列表](references/product-assets.md)。

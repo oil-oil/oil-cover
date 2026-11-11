@@ -31,7 +31,7 @@ class CoverGuardTests(unittest.TestCase):
         messages = COVER.build_analysis_messages(args, [], [], None, "", "")
         self.assertIn("Zenmux test/custom-image-model", messages[0]["content"])
         self.assertIn("16%-22%", messages[0]["content"])
-        self.assertIn("high-contrast solid rounded pill", messages[0]["content"])
+        self.assertIn("NO pill capsule", messages[0]["content"])
         self.assertIn("tell test/custom-image-model", messages[1]["content"][0]["text"])
         self.assertNotIn("openai/gpt-image-2.", messages[0]["content"])
 
@@ -205,6 +205,70 @@ class CoverGuardTests(unittest.TestCase):
         args = type("Args", (), {"title": "确定标题", "default_creator_portrait": False, "allow_subtitle": True})()
         COVER.apply_script_guards(args, analysis, Path(manifest["analysis_path"]).parent, [])
         self.assertEqual(analysis["prompts"], before)
+
+    def test_parse_aspect_spec_supports_subsets_and_rejects_invalid(self):
+        self.assertEqual(COVER.parse_aspect_spec("all"), ("3x4", "4x3", "16x9"))
+        self.assertEqual(COVER.parse_aspect_spec("both"), ("3x4", "4x3"))
+        self.assertEqual(COVER.parse_aspect_spec("4x3,3x4"), ("3x4", "4x3"))
+        self.assertEqual(COVER.parse_aspect_spec("4x3,16x9"), ("4x3", "16x9"))
+        self.assertEqual(COVER.parse_aspect_spec("16x9"), ("16x9",))
+        with self.assertRaises(ValueError):
+            COVER.parse_aspect_spec("1x1")
+
+    def test_generate_images_streams_inline_portrait_composite_and_updates_cover_state(self):
+        from PIL import Image
+        import base64
+
+        portrait = self.work / "portrait.png"
+        Image.new("RGBA", (120, 160), (255, 0, 0, 200)).save(portrait, format="PNG")
+        overlay = {"label": "configured_creator_portrait", "path": str(portrait), "role": "local_code_composite"}
+        cover_state = self.work / "demo.cover-state.json"
+
+        def make_b64_png(w: int, h: int) -> str:
+            buf = io.BytesIO()
+            Image.new("RGB", (w, h), (245, 248, 252)).save(buf, format="PNG")
+            return base64.b64encode(buf.getvalue()).decode("ascii")
+
+        args = type("Args", (), {
+            "aspect": "both",
+            "portrait_size": "960x1280",
+            "landscape_size": "1280x960",
+            "bilibili_size": "1280x720",
+            "generation_only": True,
+            "image_model": "openai/gpt-image-2.5-flare",
+            "api_base": "https://zenmux.ai/api/v1",
+            "timeout": 30,
+            "default_creator_portrait": True,
+            "cover_state_file": cover_state,
+        })()
+        analysis = {
+            "selected_frame": {"label": "input_01", "path": ""},
+            "prompts": {
+                "3x4": {"prompt": "Generate 3x4 cover"},
+                "4x3": {"prompt": "Generate 4x3 cover"},
+                "16x9": {"prompt": "Generate 16x9 cover"},
+            },
+        }
+        sidecars = COVER.save_prompt_sidecars(args, self.work, analysis, [])
+        self.assertEqual(set(sidecars.keys()), {"3x4", "4x3"})
+
+        def fake_post_json(url, payload, api_key, timeout):
+            w, h = (int(v) for v in payload["size"].split("x"))
+            return {"data": [{"b64_json": make_b64_png(w, h)}]}
+
+        records: dict = {}
+        with patch.object(COVER, "post_json", side_effect=fake_post_json):
+            delivered = COVER.generate_images(
+                args, "fake-key", self.work, self.work, "demo", analysis, [], sidecars,
+                creator_portrait_overlay=overlay, portrait_records_out=records,
+            )
+        self.assertEqual(set(delivered.keys()), {"3x4", "4x3"})
+        self.assertEqual(set(records.keys()), {"3x4", "4x3"})
+        self.assertFalse((self.work / "demo_16x9.png").exists())
+        state_payload = json.loads(cover_state.read_text(encoding="utf-8"))
+        self.assertEqual(state_payload["aspects"]["3x4"]["status"], "generated")
+        self.assertEqual(state_payload["aspects"]["4x3"]["status"], "generated")
+        self.assertNotIn("16x9", state_payload["aspects"])
 
 
 if __name__ == "__main__":

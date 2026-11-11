@@ -67,7 +67,7 @@
 
 - 必须是 exact 3:4 portrait cover，接近 1080x1440 的竖向构图；脚本 API 尺寸默认使用 `960x1280`。
 - 标题更集中、更大，手机信息流里先看见标题再看见屏幕。
-- 主标题每行横向铺满安全区宽度的约 90%-96%，每行字高约占画面高度 8%-12%；宁可断成两行大字，也不要一行小字。
+- 主标题每行横向铺满安全区宽度的约 90%-96%，每行字高约占画面高度 11%-15%；严格断成两行超大粗黑体（每行 3-5 个字），绝不要一行小字。
 - 标题块建议放在上方 10%-42% 区域，屏幕块建议放在下方 42%-96% 区域。
 - 屏幕默认放大到画面下半部，约占画面高度 55%-70%，可只露出 80%-95%。
 - 标题和屏幕要通过轻微重叠、轴线、界面状态、选框或光标形成同一套画面秩序。
@@ -122,48 +122,47 @@
 ## 封面色彩体系
 
 - 封面的外层设计色分三层：底与氛围、强调色、文字灰阶。三层必须合成一套有意图的配色方案，不是各自随机取色。
-- 底色用暖白、冷白、浅灰其一，也可以是极浅的有色纸（淡奶油、淡雾蓝、淡藕粉等）。
-- 背景必须有可感知的柔和色彩氛围，不能素到接近纯灰白、像没设计过的表单页。氛围层允许 1-3 个同家族或邻近色相柔和融合（例如雾蓝+淡紫+浅粉、奶油+淡金），像纸上晕染的柔光，放在边缘、角落或屏幕后方，覆盖约 20%-40% 画面。
-- 氛围层色调统一走「粉调/灰调/奶油调」：高明度、中低饱和、柔和不刺眼；色相之间过渡要柔，不能出现生硬分界。
-- 强调色用于主标题第二行的实心大胶囊（Solid High-Contrast Pill）与标题下划线：采用饱满、高对比度的实心色彩（如珊瑚红 `#F26B5B`、活力暖橙 `#F07B3F`、复古翠绿 `#2E8B57` 或深邃钴蓝 `#3B66F5`）配纯白粗体大字（`#FFFFFF`），边缘干净利落，在浅色纸面背景上形成强缩略图焦点。
-- 荧光绿、酸性黄绿、电光蓝等刺眼荧光色，禁止用于大面积背景；背景氛围保持粉调/灰调/奶油调。
-- 禁止全光谱彩虹（红橙黄绿蓝紫俱全）、高饱和霓虹渐变、喷雾状光斑团和脏灰浊色。邻近色相的柔和 pastel 过渡是允许且鼓励的。
-- 调色约束只管外层设计色：背景、标题高亮、点缀、小标签。屏幕证据内部的 UI 原色不受限制，真实截图该什么色就什么色。
-- 颜色的气质基准：像纸面印刷和晕染的柔和油墨，不像屏幕发光。
+- **底色优先用干净清爽的纯白、冷白或极浅云灰白（`#F8FAFC`、`#FFFFFF`）**，画面要干净透亮；**禁止默认使用米白、奶油黄、暖黄或旧纸色（no cream, no warm ivory, no yellowish tint）**，避免每次背景看起来黄黄的。
+- 背景必须有可感知的柔和色彩氛围，不能素到接近纯灰白。氛围层允许 1-3 个同家族或邻近清爽色相柔和融合（例如冰川蓝+淡雾紫 `#EBF3FF`+`#EEF2FF`、薄荷青+浅天蓝、淡樱粉+浅雾紫），像干净白纸边缘晕染的柔光，放在边缘、角落或屏幕后方，覆盖约 20%-40% 画面。
+- 氛围层色调统一走「高明度清爽粉调（Crisp Clean Pastel）」：明快、干净、柔和不刺眼，不加暖黄滤镜。
+- 强调色用于标题下方的干净手绘感下划线、局部单个词的文字变色或极轻装饰：与画面主色调和谐呼应（如深邃钴蓝 `#2563EB`、翡翠绿 `#10B981`、靛紫 `#4F46E5`）；**严禁默认使用实心彩色大胶囊把标题包起来，也严禁使用土味亮橙/促销红胶囊框**。
+- 荧光绿、酸性黄绿等刺眼荧光色，禁止用于大面积背景；背景保持清爽白底配干净 pastel 柔光。
+- 禁止全光谱彩虹（红橙黄绿蓝紫俱全）、高饱和霓虹渐变、喷雾状光斑团和泛黄脏灰浊色。
+- 调色约束只管外层设计色：背景、标题装饰、点缀、小标签。屏幕证据内部的 UI 原色不受限制，真实截图该什么色就什么色。
+- 颜色的气质基准：像 Apple 官网的清爽浅色编辑感，干净透亮，不泛黄、不土气。
 
 ## 背景和阴影
 
-- 背景顺序：纯净底色、细网格、柔和 pastel 氛围层、极轻 grain。
+- 背景顺序：纯净清爽白底（`#F8FAFC` / `#FFFFFF`）、细网格、清爽 pastel 氛围层、极轻 grain。
 - 网格要细、浅、均匀，在空白区域肉眼可见，不能被渐变冲掉。
-- 当局部渐变或屏幕光感经过网格时，网格线可以出现极轻的取样色光泽，像柔和光线掠过纸面或磨砂玻璃。光泽只能增强层次，不能变成霓虹网格或复杂科技线条。
-- 氛围层从选定关键帧、截图、Logo 或参考图取色相，并按「封面色彩体系」调成粉调/灰调/奶油调后使用，像纸上晕染的柔光。
+- 当局部渐变或屏幕光感经过网格时，网格线可以出现极轻的取样色光泽，像柔和光线掠过白纸或磨砂玻璃。光泽只能增强层次，不能变成霓虹网格或复杂科技线条。
+- 氛围层从选定关键帧、截图、Logo 或参考图取色相，并按「封面色彩体系」调成清爽干净的 pastel 柔光（不混入暖黄/米黄）。
 - 氛围层默认放在边缘、角落或屏幕后方，覆盖约 20%-40% 画面。
-- 不要荧光酸性色、脏灰底色、复杂科技线条、坐标纹或过度发光。
+- 不要泛黄米白底、荧光酸性色、脏灰底色、复杂科技线条、坐标纹或过度发光。
 - 屏幕阴影默认使用清爽浅阴影：主阴影接近 `0 18px 44px rgba(30,35,40,0.10)`，接触阴影接近 `0 4px 12px rgba(30,35,40,0.06)`。
 - 避免厚重黑影、强烈投影、大面积脏灰阴影、霓虹发光和悬浮过高的夸张阴影。
 
 ## 字体和标题
 
-- 中文主标题使用 Apple-like 现代黑体风格，接近苹方 / SF Pro CJK。
-- 不使用宋体主标题、综艺花字、手写体、卡通字、书法字、廉价发光描边和立体金属字。
-- 字体最多 2-3 种层次：主标题、衬线强调、小标签或英文注释。
-- 衬线优先给语义关键词：产品名、工具名、模型名、关键概念、数字编号。
+- 中文主标题所有行必须 100% 统一使用**粗壮有力的 Apple-like 现代无衬线粗黑体（接近苹方 PingFang SC Heavy / Bold / SF Pro Display Bold）**，字重饱满厚实，上下行字形风格完全一致。
+- 严禁中文主标题出现宋体、明体、楷体、细体、书法笔锋、综艺花字、手写体、卡通字、廉价发光描边或立体金属字；严禁第一行与第二行中文字体不一致。
+- 字体最多 2-3 种层次：中文超大粗黑体主标题、英文/数字衬线强调、小标签或副标题注释。
+- 衬线体（Serif / Serif Italic）仅限用于英文产品名、工具名、模型名、英文关键词（如 `Agent`、`Skill`、`Claude`）或数字编号，绝不用于汉字。
 - 中英文混排要统一字重、基线、深色和行距。
-- Agent 自拟主标题时默认 6-10 个字（严格断为 2 行 × 3-5 字，最佳 4+4 字），优先表达结果、动作或痛点；长英文品牌名或 Skill 名拆为上方独立小标，不塞进主标题行内挤小字号。用户指定标题或要求使用文件名时保留完整文字、型号和标点，通过断行适配画幅，不套用此长度建议。
+- **字数精炼以保证超大字号**：Agent 自拟主标题时默认 **`2 行 × 3-5 字`（最佳 `4+4` 字，总长 6-10 字，如 `"AI 写前端 / 风格统一"`）**，优先表达核心动作、对象或结果；长英文品牌名或 Skill 名拆为上方独立品牌小标，不塞进主标题行内挤小字号。用户指定标题或要求使用文件名时保留完整文字、型号和标点，通过断行适配画幅，不套用此长度建议。
 - 定稿主标题只保留一套断行指令。逐行连接后必须与定稿原文一致，不因关键词高亮、chip 或小标签重复标题词；强调词跨行时只在原有字形上分段加样式，不另写一份。
 - 可以加一句短副标题，明显小于主标题，只补一个动作、判断或边界，不写解释段落。当用户要求”只要标题””不需要副标题”时，外层只保留主标题。
-- 标题装饰和副标题不是一回事。副标题可以解释内容，标题装饰负责让标题区域更有视觉层次，例如轻高亮、细标记、小标签、光标点或局部界面状态。
+- 标题装饰和副标题不是一回事。副标题可以解释内容，标题装饰负责让标题区域更有视觉层次，例如细笔触下划线、小标签、光标点或局部界面状态。
 - Agent 自拟文字不使用夸张词、感叹号或 hashtag，不堆 3 个以上小标签；用户已经指定的标题原文优先。
 - 如果用户说”不需要描述文字””只要标题””不要小标签”，外层只允许出现主标题。
 
 ## 关键词和点缀
 
-- 一张封面最多 1-2 个强调区域，优先给产品名、工具名、模型名或关键动作词。
-- **第一视觉抓手：高对比度实心大胶囊（Solid High-Contrast Pill + 纯白粗体大字）**：
-  - 默认将主标题的第二行（或最核心的 3-5 字结果/动作词）放进一个**饱满、高对比度的实心圆角大胶囊（Solid Pill Capsule，如珊瑚红 Coral Red `#F26B5B`、活力暖橙 Warm Amber `#F07B3F`、复古翠绿 Emerald `#2E8B57` 或深邃钴蓝 Cobalt `#3B66F5`，内部文字使用纯白粗体 `#FFFFFF`）**。
-  - 第一行保持深石墨黑粗体大字（`#1E2328`），可在关键词下方加一条同色系的手绘感粗下划线（brush underline），并在实心大胶囊右侧点缀 2 笔简洁的强调短线（impact ticks），形成强烈、鲜明、一眼抓人的缩略图视觉重心。
-- **屏幕内部保留高对比视觉重音**：
-  - 当外层背景是浅暖白纸面时，右侧屏幕窗口切忌重绘成全灰白的平淡线框；必须保留或强化真实截图里的深色模块（如深色卡片、深色多轨时间轴、深色编辑器面板）、高亮图表色块或鲜明的状态标记，让右侧屏幕与左侧浅色背景形成清晰的明暗与色彩反差。
+- 一张封面最多 1-2 个强调区域，优先给产品名、工具名、模型名或关键结果词。
+- **主标题无胶囊超大字排版（严禁套胶囊框与爆炸线）**：
+  - 主标题两行超大粗黑体默认保持**纯正深石墨黑（`#1E2328`）**，或第一行深石墨黑（`#1E2328`）、第二行核心词直接采用**高可读性的深邃品牌色粗黑体文字**（如深钴蓝 `#1D4ED8` / 深翠绿 `#047857`，文字直接着深色，**外部绝不套任何胶囊框或色块底板**）。
+  - **严禁给主标题套任何胶囊框、圆角贴片、色块底条或按钮背景（NO pill capsule, NO highlight box/chip behind title text）**，让超大号粗黑体文字直接落在干净清爽的白底上，并在第二行下方配一条干净利落的同色系笔触下划线（clean brush underline）即可，画面大气干净、重点一目了然。
+  - 严禁在标题旁画放射短线/爆炸线（NO impact ticks / burst lines）。
 - 装饰必须来自内容逻辑，优先使用当前截图或当前主题自然出现的界面状态、关键词、按钮、路径、URL 或光标状态。
 - 点缀里的文字、品牌名、模型名和小标签只能来自当前内容归因。不要使用历史测试案例里的固定词。
 - 坐标点、玻璃标签和悬浮说明框容易显乱，只有能直接解释画面时才加入。
@@ -206,15 +205,15 @@ Content attribution: main topic is "<主主题>"; main product is "<主产品>";
 Title text: "<主标题>" with exact line breaks "<换行方案>"; optional short subtitle "<可选副标题>" clearly smaller than the main title; small product mark "<主产品名或 Logo>".
 Composition: <标题位置、屏幕位置、互动状态、Logo 位置、点缀类型> with strict editorial alignment and readable phone-feed hierarchy.
 Local portrait composite guard: keep the generated base entirely person-free; do not draw a portrait, silhouette, placeholder, empty card, webcam bubble, avatar, mascot, or character.
-Mandatory visible background: full-canvas clean <浅色或极浅有色纸> base, visible fine grid, a soft pastel color atmosphere of <1-3 个邻近色相, 如 dusty periwinkle + soft pink / cream + pale gold> (hues from <具体颜色来源>, softened to creamy/dusty pastel) glowing gently from <位置>, and very light grain; the atmosphere covers about <20%-40%> of the canvas and must be clearly visible yet soft.
-Colour system: <底色> base with a pastel atmosphere of <邻近色相组>, plus one bold high-contrast solid rounded pill capsule on line 2 of the title in <饱满实心强调色, 如 coral red #F26B5B / warm amber #F07B3F / cobalt #3B66F5 / emerald #2E8B57> with bold pure white text (#FFFFFF); line 1 stays deep graphite (#1E2328).
+Mandatory visible background: full-canvas clean crisp white/cool off-white (#F8FAFC) base, visible fine grid, a soft clean pastel color atmosphere of <1-3 个清爽邻近色相, 如 ice blue + soft periwinkle / mint + sky blue> (hues from <具体颜色来源>, softened to a clean crisp pastel without any yellowish or cream tint) glowing gently from <位置>, and very light grain; the atmosphere covers about <20%-40%> of the canvas and must be clearly visible yet soft.
+Colour system: clean crisp white (#F8FAFC) base (strictly no yellowish cream or ivory tint) with a pastel atmosphere of <清爽邻近色相组>, plus massive bare heavy sans-serif title typography in deep graphite (#1E2328) with one clean brush underline in <主色强调色> under line 2 — never enclose any title text in a pill capsule or colored box.
 Screen crop plan: one visible screen/browser object only; show about <比例>; offset <方向>; clip <边/角> by canvas edge, safe area, or invisible mask; keep only the screen object's own edge or browser chrome.
-Screenshot distillation plan: treat the selected screenshot as evidence source, not a full screenshot to copy; extract only <2-3 个关键证据>; remove <侧栏/长文/字幕/头像/无关小字/路径/通知/状态栏>; rebuild the screen area as a simplified real-feeling UI with generous whitespace, high-contrast dark cards or highlight bars, and a clear focal hierarchy.
+Screenshot distillation plan: treat the selected screenshot as evidence source, not a full screenshot to copy; extract only <2-3 个关键证据>; remove <侧栏/长文/字幕/头像/无关小字/路径/通知/状态栏>; rebuild the screen area as a simplified real-feeling UI with generous whitespace and a clear focal hierarchy.
 Visual communication plan: one-glance subject is <0.5 秒内要读者看到的结果>; primary evidence is <最能证明结果的区域>; make it occupy <55%-75%> of the screen content area; supporting evidence is <辅助 UI> and must stay below <15%-30%>; sacrifice <可以删掉/裁掉/弱化的信息> if it makes the primary evidence smaller.
 Screen refinement plan: refine and recompose the screen content by <强化重点>; clean <字幕/人像/杂边/冗余文字>; preserve <产品名/命令/关键 UI 状态>.
 Shadow plan: screen object only, clean light graphite shadow close to `0 18px 44px rgba(30,35,40,0.10)` plus soft contact shadow close to `0 4px 12px rgba(30,35,40,0.06)`.
-Text style: Chinese main title uses fixed Apple-like PingFang SC / SF Pro CJK; visible restrained serif accent on "<具体词>"; colors: <每段文字颜色>; no random colored words.
-Title decoration: enclose line 2 ("<第二行核心词>") in a bold high-contrast solid rounded pill capsule with pure white bold text (#FFFFFF), add a matching brush underline under "<第一行关键词>" and 2 subtle impact ticks beside the pill, plus a tiny "<当前内容小标签>" or product mark aligned to the title grid.
+Text style: All Chinese characters in the main title MUST use the exact same massive, heavy modern geometric sans-serif font (Apple PingFang SC Heavy / Bold / SF Pro Display Bold) in deep graphite (#1E2328) across all lines (cap height 16%-22% in landscape, 11%-15% in portrait) — strictly no Songti/Mingti/Kaiti on Chinese characters; restrained serif accent is allowed ONLY on English words/product names "<具体英文词>".
+Title decoration: keep the 2 massive title lines completely bare without any pill capsule or background box; add one clean brush underline under line 2, plus a small product mark above the title aligned to the title grid.
 Decoration: <1-2 个内容相关点缀>, subtle, aligned, useful for reading the current topic.
-Avoid: full screenshot copy, unfiltered raw screenshot, sidebar history list, long chat transcript, dense tiny text, extra showcase frame, white backing card, phone frame, device shell, second container, fake UI, person/avatar/face, watermark, hashtags, unrelated logo, low-resolution artifacts, acid or neon hues, fluorescent color blocks, full-spectrum rainbow gradient, plain colorless background, neon cyberpunk, heavy black shadow.
+Avoid: pill capsule or colored background chip/box around any title text, yellowish cream or warm ivory background tint, comic impact ticks or burst lines, Songti or serif Chinese headline fonts, small headline text, mismatched fonts between title lines, giant faded logo watermark in background, full screenshot copy, unfiltered raw screenshot, sidebar history list, long chat transcript, dense tiny text, extra showcase frame, white backing card, phone frame, device shell, second container, fake UI, person/avatar/face, watermark, hashtags, unrelated logo, low-resolution artifacts, acid or neon hues, fluorescent color blocks, full-spectrum rainbow gradient, plain colorless background, neon cyberpunk, heavy black shadow.
 ```

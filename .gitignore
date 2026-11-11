@@ -8,9 +8,18 @@ __pycache__/
 *.pyc
 *.pyo
 
-# Cover-gen intermediate artifacts (if produced inside the repo)
+# Cover-gen outputs & personal assets (never commit personal covers or portraits)
 *.oil-cover/
+*_3x4.png
+*_4x3.png
+*_16x9.png
+*.cover-state.json
+generation_state.json
+*.prompt.md
+*portrait*.png
+docs/showcase/
 
-# OS
+# OS & Node
 .DS_Store
 node_modules/
+*.tmp

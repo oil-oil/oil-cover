@@ -18,6 +18,7 @@ import re
 import shutil
 import subprocess
 import sys
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -241,9 +242,14 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--aspect",
-        choices=("all", "both", "3x4", "4x3", "16x9"),
         default="all",
-        help="Which cover aspect to generate. Default: all three in parallel. Legacy 'both' keeps 3x4 + 4x3.",
+        help="Which cover aspect(s) to generate: all, both (3x4+4x3), 3x4, 4x3, 16x9, or comma-separated like 3x4,4x3 / 4x3,16x9.",
+    )
+    parser.add_argument(
+        "--cover-state-file",
+        type=Path,
+        default=None,
+        help="Optional JSON state file updated atomically as each aspect finishes generating or fails.",
     )
     parser.add_argument(
         "--allow-subtitle",
@@ -262,7 +268,9 @@ def parse_args() -> argparse.Namespace:
         help="Prepare local files and prompts for the analysis call, but do not call any API.",
     )
     parser.add_argument("--timeout", type=int, default=180)
-    return parser.parse_args()
+    args = parser.parse_args()
+    parse_aspect_spec(args.aspect)
+    return args
 
 
 def fail(message: str) -> None:
@@ -348,6 +356,11 @@ def unique_times(values: list[float]) -> list[float]:
     return output
 
 
+def _run_ffmpeg_fast(tail_args: list[str], *, threads: int = 0) -> subprocess.CompletedProcess[str]:
+    # Software multi-threaded decode avoids GPU->CPU readback overhead when CPU `-vf scale` filters follow.
+    return run(["ffmpeg", "-y", "-threads", str(threads), *tail_args])
+
+
 def extract_video_frames(args: argparse.Namespace, run_dir: Path) -> list[dict[str, str]]:
     video = args.video
     if not video or not video.exists():
@@ -360,23 +373,31 @@ def extract_video_frames(args: argparse.Namespace, run_dir: Path) -> list[dict[s
     for stale in frames_dir.glob("*.jpg"):
         stale.unlink()
     duration = ffprobe_duration(video)
-    frames: list[dict[str, str]] = []
 
     # No forced first_frame: the local prefilter already scans the opening seconds, and a
     # forced t=0 frame is almost always a title/intro card that just pollutes the candidate set.
-    for idx, timestamp in enumerate(resolve_candidate_timestamps(args, run_dir, duration), start=1):
+    timestamps = resolve_candidate_timestamps(args, run_dir, duration)
+    if not timestamps:
+        return []
+
+    def _extract_one(item: tuple[int, float]) -> tuple[int, dict[str, str]]:
+        idx, timestamp = item
         out = frames_dir / f"candidate_{idx:02d}_{timestamp:06.2f}s.jpg"
         extract_frame(video, timestamp, out, args.max_frame_width)
-        frames.append({"label": f"candidate_{idx:02d}", "path": str(out), "timestamp": f"{timestamp:.2f}"})
+        return idx, {"label": f"candidate_{idx:02d}", "path": str(out), "timestamp": f"{timestamp:.2f}"}
 
-    return frames
+    workers = min(8, len(timestamps))
+    if workers <= 1:
+        return [_extract_one((1, timestamps[0]))[1]]
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
+        extracted = list(executor.map(_extract_one, enumerate(timestamps, start=1)))
+    extracted.sort(key=lambda pair: pair[0])
+    return [entry for _, entry in extracted]
 
 
-def extract_frame(video: Path, timestamp: float, output: Path, max_width: int) -> None:
-    run(
+def extract_frame(video: Path, timestamp: float, output: Path, max_width: int, *, threads: int = 2) -> None:
+    _run_ffmpeg_fast(
         [
-            "ffmpeg",
-            "-y",
             "-ss",
             f"{timestamp:.3f}",
             "-i",
@@ -388,7 +409,8 @@ def extract_frame(video: Path, timestamp: float, output: Path, max_width: int) -
             "-q:v",
             "3",
             str(output),
-        ]
+        ],
+        threads=threads,
     )
 
 
@@ -416,10 +438,8 @@ def _scan_video_frames(
     scan_dir.mkdir(parents=True, exist_ok=True)
     for stale in scan_dir.glob("scan_*.jpg"):
         stale.unlink()
-    run(
+    _run_ffmpeg_fast(
         [
-            "ffmpeg",
-            "-y",
             "-i",
             str(args.video),
             "-vf",
@@ -456,15 +476,15 @@ def select_timestamps_local(
     if not files:
         raise RuntimeError("local scan produced no frames")
 
-    scored: list[dict[str, Any]] = []
-    for idx, path in enumerate(files):
+    def _score_one(item: tuple[int, Path]) -> dict[str, Any] | None:
+        idx, path = item
         try:
             with Image.open(path) as im:
                 gray = np.asarray(im.convert("L"), dtype=np.float32)
         except Exception:
-            continue
+            return None
         if gray.shape[0] < 3 or gray.shape[1] < 3:
-            continue
+            return None
         mean = float(gray.mean())
         std = float(gray.std())
         sharp = _laplacian_variance(gray)
@@ -473,9 +493,14 @@ def select_timestamps_local(
             ts = min(ts, duration - 0.05)
         # Hard-reject: near-black, blown-out white, and near-uniform (blank/solid/loading) frames.
         usable = 15.0 <= mean <= 248.0 and std >= 8.0
-        scored.append(
-            {"ts": round(ts, 2), "mean": mean, "std": std, "sharp": sharp, "usable": usable}
-        )
+        return {"ts": round(ts, 2), "mean": mean, "std": std, "sharp": sharp, "usable": usable}
+
+    workers = min(8, os.cpu_count() or 4)
+    if len(files) > 16 and workers > 1:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
+            scored = [entry for entry in executor.map(_score_one, enumerate(files)) if entry is not None]
+    else:
+        scored = [entry for entry in (_score_one(pair) for pair in enumerate(files)) if entry is not None]
 
     if not scored:
         raise RuntimeError("local scan scored no frames")
@@ -755,7 +780,7 @@ def composite_creator_portrait(
         merged = Image.alpha_composite(base, layer).convert("RGB")
 
         temp_path = output_path.with_name(f".{output_path.name}.{uuid.uuid4().hex}.tmp.png")
-        merged.save(temp_path, format="PNG", optimize=True)
+        merged.save(temp_path, format="PNG", compress_level=6)
         os.replace(temp_path, output_path)
 
     return {
@@ -853,19 +878,19 @@ def build_analysis_messages(
         "same instruction in different words, do not give conflicting numbers or directions, and never rely "
         "on post-processing to fix the prompt. Prefer a tight, unambiguous prompt over a long padded one. "
         "Visual quality bar, fold these naturally into the one prompt without padding: "
-        "(1) design an intentional colour scheme with real atmosphere and a high-contrast focal point: "
-        "a clean light base (white, light gray, or a very pale tinted paper) carrying a soft pastel colour "
-        "atmosphere of 1-3 neighbouring hues that blend gently at the edges/corners/behind the screen — name "
-        "the hues explicitly, for example dusty periwinkle + soft pink, or cream + pale gold. Sample atmosphere "
-        "hues from the frame or logo and soften them to a creamy/dusty pastel (never acid/neon or full-spectrum "
-        "rainbow on the background). Pair that soft background with ONE bold, high-contrast solid rounded pill "
-        "capsule enclosing line 2 of the title (e.g., vibrant coral red #F26B5B, warm amber #F07B3F, deep cobalt "
-        "#3B66F5, or rich emerald #2E8B57) with bold pure white text (#FFFFFF) inside, while line 1 stays deep "
-        "graphite (#1E2328) with a matching brush underline and 2 subtle impact ticks beside the pill; "
+        "(1) design a crisp, clean Apple-like colour scheme with real atmosphere and zero yellowish tint: "
+        "a clean pure white or cool off-white base (#F8FAFC / #FFFFFF, strictly NO yellowish cream, warm ivory, or "
+        "pale gold tint) carrying a soft clean pastel colour atmosphere of 1-3 neighbouring hues that blend gently "
+        "at the edges/corners/behind the screen — name the hues explicitly, for example ice blue + soft periwinkle, "
+        "or mint + sky blue. Sample atmosphere hues from the frame or logo and soften them to a clean crisp pastel. "
+        "Keep ALL main title text in unified deep graphite (#1E2328) using a single massive, heavy modern geometric "
+        "sans-serif font (Apple PingFang SC Heavy / Bold / SF Pro Display Bold) across all Chinese characters "
+        "(strictly NO Songti/Mingti/Kaiti on Chinese text, NO pill capsule or colored box/chip around any title "
+        "text, and NO comic impact ticks). Leave the massive title characters completely bare on the clean white "
+        "canvas and add ONE clean brush underline under line 2 in the primary accent colour; "
         "(2) make the screen/browser object intentionally overflow and get clipped by at least one canvas "
         "edge, showing only about 80%-95% of it while keeping a visible top-left window edge, for a premium "
-        "editorial close-up with real depth, never a small fully-centered complete screenshot; preserve high-contrast "
-        "dark cards, timelines, or highlight bars inside the screen so it pops against the light background; "
+        "editorial close-up with real depth, never a small fully-centered complete screenshot; "
         "(3) ground the screen with a soft graphite drop shadow plus a subtle contact shadow; "
         "(4) when the evidence is a row of cards or thumbnails, show 3 oversized cards fully plus a 4th "
         "clipped at the edge, not a flat strip of small ones; "
@@ -874,8 +899,8 @@ def build_analysis_messages(
         "gentle parallax depth and dimensionality; this intentionally overrides any 'front-facing flat / "
         "0-degree rotation / no diagonal edge' default in the rules; keep all UI text readable and avoid "
         "extreme skew, fisheye, warping, or heavy rotation; "
-        "(6) make the main title unmistakably large — the covers live in phone and desktop feeds: in the 3:4 portrait "
-        "prompt each title line spans about 90%-96% of the safe-area width with a cap height around 10%-14% "
+        "(6) make the main title unmistakably HUGE — the covers live in phone and desktop feeds: in the 3:4 portrait "
+        "prompt each title line spans about 90%-96% of the safe-area width with a cap height around 11%-15% "
         "of the canvas height; in the 4:3 landscape prompt each title line's cap height is about 16%-22% of "
         "the canvas height with strictly 2 short lines of 3-5 characters per line; treat the 4:3 cover as the Bilibili homepage primary "
         "and the 16:9 cover as a separate personal-space companion; in the 16:9 prompt use the same 16%-22% cap-height "
@@ -989,18 +1014,18 @@ Important:
 - Choosing selected_frame is the single biggest quality lever. The candidate frames have already been locally prefiltered for technical quality (sharpness, brightness, content) and spread across the video, so they should all be reasonably crisp — spend your judgement on WHICH one best represents the subject: prefer the frame that most clearly shows the named tool/product actually in use (its real interface, panel, result, or action), fully visible, clean, and large. Still reject any that slipped through: blurry/motion-blurred, fade/transition, near-empty intros, loading states, mostly-plain-text, or frames where the main evidence is occluded, cropped, or tiny. If several frames are similar, pick the cleanest and most on-topic; list the next best ones in backup_frames.
 - The three prompts must explicitly mention exact 3:4, exact 4:3, and exact 16:9 respectively.
 - The prompts must include the mandatory visible background sentence from the rules.
-- The color_plan must follow the cover colour system from the rules: a clean light base plus a soft pastel atmosphere of 1-3 neighbouring hues on the background, paired with a bold, high-contrast solid pill capsule on line 2 of the title (e.g. coral red #F26B5B, warm amber #F07B3F, cobalt #3B66F5, or emerald #2E8B57) with pure white bold text (#FFFFFF). Write gradient_source as the named pastel background hues (e.g. "dusty periwinkle + soft pink") and accent as the solid pill colour.
+- The color_plan must follow the cover colour system from the rules: a clean crisp white / cool off-white base (#F8FAFC / #FFFFFF, strictly no yellowish cream or warm ivory tint) plus a soft clean pastel atmosphere of 1-3 neighbouring hues on the background, paired with massive bare deep-graphite (#1E2328) heavy sans-serif title text and one clean brush underline under line 2. Never enclose any title text in a pill capsule or colored box/chip. Write gradient_source as the named clean pastel background hues (e.g. "ice blue + soft periwinkle") and accent as the brush underline colour.
 - The prompts must tell {args.image_model} to create one complete final cover in one image.
 - The prompts must preserve real tutorial evidence from the selected frame and remove unrelated people/webcam/avatar/subtitles from the source screen and rebuilt UI.
 - {"The prompts must keep the generated base person-free. Never draw a placeholder or portrait. The local script will composite the fixed transparent paper-cut portrait after generation." if args.default_creator_portrait else "The prompts must not add a creator portrait. Keep the final cover completely person-free: no human face, no avatar, no webcam bubble, no mascot, no character, and no portrait thumbnail."}
 - {"Do not request or depend on the creator portrait as a generation reference. The portrait is applied later at a fixed layout: 3:4 = 55% canvas width, 6% past the right edge, top 58%; 4:3 = 38% canvas width, 3% past the right edge, top 40%; 16:9 = 32% canvas width, 2% inside the right edge, top 40%." if args.default_creator_portrait else "Use software UI evidence, product logo, workflow chips, cursor marks, panels, and text hierarchy as the personal-brand signal instead of any person or face."}
-- The prompts must not copy the selected screenshot as-is. They must specify a screenshot distillation plan: keep only 2-3 essential UI signals, remove noisy sidebars/long text/unrelated details, and rebuild the screen area as a clean real-feeling UI that retains high-contrast dark cards, timelines, or highlight bars against the light background.
+- The prompts must not copy the selected screenshot as-is. They must specify a screenshot distillation plan: keep only 2-3 essential UI signals, remove noisy sidebars/long text/unrelated details, and rebuild the screen area as a clean real-feeling UI with a clear focal hierarchy.
 - The prompts must include a visual communication plan: the one-glance subject, the primary evidence, the maximum size of supporting evidence, and what to delete/crop if the primary evidence becomes too small.
 - If the primary evidence is a row/grid/gallery/list of result cards, cover thumbnails, generated images, or comparison examples, the prompts must make those results large and readable as the dominant gallery. Do not shrink them into a faithful full-workspace screenshot.
-- The prompts must include a title decoration plan: enclose line 2 of the title in a bold, high-contrast solid rounded pill capsule with pure white bold text (#FFFFFF), keep line 1 in deep graphite (#1E2328) with a matching brush underline under the key term, and add 1-2 content-related accents such as subtle impact ticks beside the pill or a small product/workflow label above the title.
+- The prompts must include a bare-headline title decoration plan: keep all Chinese title lines in unified deep graphite (#1E2328) massive heavy geometric sans-serif (PingFang SC Heavy / Bold, strictly no Songti/Mingti/Kaiti on Chinese characters), leave the title glyphs completely bare without any pill capsule or background chip/box, add one clean brush underline under line 2, and place a small product mark above the title aligned to the title grid.
 - The prompts must not ask for local post-processing.
 - {subtitle_instruction}
-- For the 4:3 and 16:9 horizontal prompts, the main title must be the first visual anchor, while the selected screen evidence remains large and readable. Treat 4:3 as the Bilibili homepage primary upload asset and 16:9 as a separate personal-space companion. All prompts must state the title size explicitly (portrait: each line spans ~90%-96% of the safe-area width with cap height ~10%-14%; landscape: cap height ~16%-22% of canvas height, strictly 2 short lines of 3-5 characters each, with line 2 enclosed in a bold high-contrast solid colour pill with white text) so the title cannot come out small.
+- For the 4:3 and 16:9 horizontal prompts, the main title must be the first visual anchor, while the selected screen evidence remains large and readable. Treat 4:3 as the Bilibili homepage primary upload asset and 16:9 as a separate personal-space companion. All prompts must state the HUGE title size explicitly (portrait: each line spans ~90%-96% of the safe-area width with cap height ~11%-15%; landscape: cap height ~16%-22% of canvas height across strictly 2 short lines of 3-5 characters each, bare heavy sans-serif text with no pill capsule) so the title cannot come out small.
 """
     content: list[dict[str, Any]] = [{"type": "text", "text": user_text}]
     for item in frames:
@@ -1166,12 +1191,28 @@ def redact_payload(payload: Any) -> Any:
     return payload
 
 
-def requested_aspects(args: argparse.Namespace) -> tuple[str, ...]:
-    if args.aspect == "all":
-        return ("3x4", "4x3", "16x9")
-    if args.aspect == "both":
+VALID_ASPECT_KEYS = ("3x4", "4x3", "16x9")
+
+
+def parse_aspect_spec(raw: str) -> tuple[str, ...]:
+    spec = str(raw or "all").strip().lower()
+    if spec == "all":
+        return VALID_ASPECT_KEYS
+    if spec == "both":
         return ("3x4", "4x3")
-    return (args.aspect,)
+    tokens = [part.strip() for part in spec.split(",") if part.strip()]
+    if not tokens:
+        raise ValueError(f"Invalid --aspect value: {raw!r}")
+    for token in tokens:
+        if token not in VALID_ASPECT_KEYS:
+            raise ValueError(
+                f"Invalid --aspect token {token!r}; expected all, both, or comma-separated subset of {VALID_ASPECT_KEYS}"
+            )
+    return tuple(key for key in VALID_ASPECT_KEYS if key in tokens)
+
+
+def requested_aspects(args: argparse.Namespace) -> tuple[str, ...]:
+    return parse_aspect_spec(getattr(args, "aspect", "all"))
 
 
 def aspect_size(args: argparse.Namespace, aspect_key: str) -> str:
@@ -1313,6 +1354,8 @@ def product_logo_guard(logos: list[dict[str, str]]) -> str:
         " Product identity guard: use the supplied logo reference image"
         f"{'s' if len(logos) > 1 else ''} ({names}) for the real product mark. "
         "Preserve the reference logo's actual silhouette, proportions, and mark style. "
+        "Render the logo at a small, clean editorial scale above the title or in the window header; "
+        "never draw a giant faded logo watermark in the background. "
         "Do not invent, simplify, replace, or approximate it with a generic code icon, braces icon, "
         "random abstract symbol, unrelated app logo, or text-only substitute."
     )
@@ -1422,6 +1465,15 @@ def hard_rule_backfill(
     if logo_guard and "Product identity guard:" not in prompt:
         prompt += logo_guard
         notes.append(f"{aspect_key}: backfilled product identity guard.")
+
+    if "pingfang" not in low and "geometric sans-serif" not in low:
+        prompt += (
+            " Typography guard: all Chinese characters in the main title must use one unified massive, heavy modern "
+            "geometric sans-serif font (Apple PingFang SC Heavy / Bold / SF Pro Display Bold) in deep "
+            "graphite (#1E2328) across all lines — strictly no Songti, Mingti, Kaiti, or serif strokes on "
+            "Chinese characters, no pill capsule or background chip/box around any title text, and no comic impact ticks."
+        )
+        notes.append(f"{aspect_key}: backfilled Chinese sans-serif typography guard.")
 
     return prompt, notes
 
@@ -1689,6 +1741,13 @@ def selected_reference_paths(
     return selected
 
 
+def _write_json_atomic(path: Path, payload: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
+    temp.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    os.replace(temp, path)
+
+
 def generate_images(
     args: argparse.Namespace,
     api_key: str,
@@ -1698,9 +1757,43 @@ def generate_images(
     analysis: dict[str, Any],
     refs: list[Path],
     sidecars: dict[str, Path],
+    creator_portrait_overlay: dict[str, Any] | None = None,
+    portrait_records_out: dict[str, Any] | None = None,
 ) -> dict[str, str]:
     results: dict[str, str] = {}
     prompts = analysis.get("prompts", {})
+    do_inline_composite = bool(getattr(args, "default_creator_portrait", False) and creator_portrait_overlay)
+    overlay_path = Path(str(creator_portrait_overlay["path"])) if do_inline_composite and creator_portrait_overlay else None
+    cover_state_file: Path | None = getattr(args, "cover_state_file", None) or (work_dir / "generation_state.json")
+    state_lock = threading.Lock()
+
+    def update_cover_state(aspect_key: str, entry: dict[str, Any]) -> None:
+        if not cover_state_file:
+            return
+        with state_lock:
+            current: dict[str, Any] = {}
+            if cover_state_file.exists():
+                try:
+                    loaded = json.loads(cover_state_file.read_text(encoding="utf-8"))
+                    if isinstance(loaded, dict):
+                        current = loaded
+                except Exception:
+                    current = {}
+            aspects_map = current.get("aspects")
+            if not isinstance(aspects_map, dict):
+                aspects_map = {}
+            existing_entry = aspects_map.get(aspect_key)
+            merged_entry = {**(existing_entry if isinstance(existing_entry, dict) else {}), **entry, "updatedAt": datetime.now().isoformat(timespec="seconds")}
+            aspects_map[aspect_key] = merged_entry
+            current["aspects"] = aspects_map
+            statuses = [v.get("status") for v in aspects_map.values() if isinstance(v, dict)]
+            if statuses and all(s == "ready" for s in statuses):
+                current["status"] = "ready"
+            elif statuses and all(s == "generated" for s in statuses):
+                current["status"] = "generated"
+            else:
+                current.setdefault("status", "generating")
+            _write_json_atomic(cover_state_file, current)
 
     jobs = []
     for key in requested_aspects(args):
@@ -1711,11 +1804,12 @@ def generate_images(
             print(f"Skip {key}: empty prompt")
             continue
         jobs.append((key, prompt, size))
+        update_cover_state(key, {"status": "generating", "path": str(base_dir / f"{stem}_{key}.png")})
 
     if not jobs:
         return results
 
-    def generate_one(key: str, prompt: str, size: str) -> tuple[str, str]:
+    def generate_one(key: str, prompt: str, size: str) -> tuple[str, str, dict[str, Any] | None]:
         print(f"Generating {key} cover via {args.image_model} at {size}...")
 
         output = base_dir / f"{stem}_{key}.png"
@@ -1750,22 +1844,50 @@ def generate_images(
 
         raw_path = work_dir / f"{key}.response.json"
         raw_path.write_text(json.dumps(response, ensure_ascii=False, indent=2), encoding="utf-8")
-        save_image_response(response, output, args.timeout)
 
-        sidecars[key].write_text(
-            prompt_sidecar_text(key, size, prompt, analysis, refs, str(output), "GENERATED"),
-            encoding="utf-8",
-        )
-        return key, str(output)
+        record: dict[str, Any] | None = None
+        if do_inline_composite and overlay_path is not None:
+            # Stream portrait compositing right inside the worker thread so the final output
+            # file lands atomically with its portrait without waiting for slower sibling aspects.
+            base_path = work_dir / f"{key}.generated-base.png"
+            save_image_response(response, base_path, args.timeout)
+            record = composite_creator_portrait(base_path, output, overlay_path, key)
+            sidecars[key].write_text(
+                prompt_sidecar_text(
+                    key,
+                    size,
+                    prompt,
+                    analysis,
+                    refs,
+                    str(output),
+                    "GENERATED_AND_CODE_COMPOSITED",
+                    record,
+                ),
+                encoding="utf-8",
+            )
+        else:
+            temp_out = output.with_name(f".{output.name}.{uuid.uuid4().hex}.tmp.png")
+            save_image_response(response, temp_out, args.timeout)
+            os.replace(temp_out, output)
+            sidecars[key].write_text(
+                prompt_sidecar_text(key, size, prompt, analysis, refs, str(output), "GENERATED"),
+                encoding="utf-8",
+            )
+
+        update_cover_state(key, {"status": "generated", "path": str(output)})
+        return key, str(output), record
 
     failures: list[str] = []
+    inline_records: dict[str, Any] = {}
     with concurrent.futures.ThreadPoolExecutor(max_workers=len(jobs)) as executor:
         future_map = {executor.submit(generate_one, *job): job[0] for job in jobs}
         for future in concurrent.futures.as_completed(future_map):
             key = future_map[future]
             try:
-                result_key, path = future.result()
+                result_key, path, record = future.result()
                 results[result_key] = path
+                if record is not None:
+                    inline_records[result_key] = record
             except Exception as exc:
                 sidecars[key].write_text(
                     prompt_sidecar_text(
@@ -1779,8 +1901,17 @@ def generate_images(
                     ),
                     encoding="utf-8",
                 )
+                update_cover_state(key, {"status": "generation_error", "error": str(exc)})
                 print(f"Error: {key} generation failed: {exc}", file=sys.stderr)
                 failures.append(key)
+
+    if inline_records:
+        (work_dir / "portrait_composite.json").write_text(
+            json.dumps(inline_records, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        if portrait_records_out is not None:
+            portrait_records_out.update(inline_records)
 
     # A single failed aspect must not discard the others that already succeeded.
     if failures and not results:
@@ -1928,16 +2059,28 @@ def main() -> None:
     results: dict[str, str] = {}
     portrait_composites: dict[str, Any] = {}
     if not args.skip_generate and not args.dry_run:
-        results = generate_images(args, api_key, work_dir, base_dir, stem, analysis, refs, sidecars)
-        portrait_composites = apply_creator_portrait_composites(
+        results = generate_images(
             args,
+            api_key,
             work_dir,
+            base_dir,
+            stem,
             analysis,
             refs,
             sidecars,
-            results,
-            creator_portrait_overlay,
+            creator_portrait_overlay=creator_portrait_overlay,
+            portrait_records_out=portrait_composites,
         )
+        if not portrait_composites and args.default_creator_portrait and results:
+            portrait_composites = apply_creator_portrait_composites(
+                args,
+                work_dir,
+                analysis,
+                refs,
+                sidecars,
+                results,
+                creator_portrait_overlay,
+            )
 
     final_manifest = {
         **manifest,
