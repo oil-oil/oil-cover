@@ -103,7 +103,7 @@ assets/product-logos/           内置 AI 产品 Logo
 
 ## 适用边界与数据
 
-仅制作视频封面，不剪辑视频或操作发布平台。脚本模式向已配置服务发送候选帧、字幕和提示词，不上传整段视频；创作者头像仅在本地合成。
+仅制作视频封面，不剪辑视频或操作发布平台。脚本模式向已配置服务发送候选帧、字幕和提示词，不上传整段视频；创作者头像仅在本地合成。平时从选题、录屏剪辑到做封面发多平台的流程，见 Oil Book 的[《如何从 0 到 1 开始做自媒体》](https://book.oiloil.org/articles/how-to-start-self-media?utm_source=github&utm_medium=referral&utm_campaign=oil-cover-readme)。
 
 ## License
 
