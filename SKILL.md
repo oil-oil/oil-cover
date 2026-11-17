@@ -15,7 +15,7 @@ description: 生成小红书和 B 站 AI 工具实操视频封面，支持脚本
 
 ## 两种执行模式
 
-- **模式一 · 脚本模式（默认）**：把活儿交给 `generate_oil_cover.py`，由脚本调用外部视觉服务完成选帧分析，并生成无人物底图；用户配置启用创作者头像时，再用确定性代码把透明头像合成到右下角。需要 Python、ffmpeg、Pillow 和所选服务的 API Key。下面「默认入口」到「输出说明」描述的都是这一模式。
+- **模式一 · 脚本模式（默认）**：把活儿交给 `generate_oil_cover.py`，由脚本调用外部视觉服务完成选帧分析，并生成无人物底图；用户配置启用创作者头像时，再用确定性代码把透明头像合成到右下角。需要 Python、ffmpeg、numpy、Pillow 和所选服务的 API Key。下面「默认入口」到「输出说明」描述的都是这一模式。
 - **模式二 · Agent 自主执行**：复用宿主视觉与内置生图能力，无需额外服务 Key，由执行的 Agent 自己读 SOP 完成选帧、分析和生图；用户配置启用头像时，再调用项目脚本的头像合成函数。完整流程见 `references/agent-native-flow.md`。
 
 ## 安装位置与用户配置
@@ -27,6 +27,14 @@ description: 生成小红书和 B 站 AI 工具实操视频封面，支持脚本
 - Skill 内脚本：`$SKILL_DIR/scripts/generate_oil_cover.py`。若安装包没有脚本，读取配置里的 `script_path`；两者都不存在时说明安装不完整，不要猜个人目录。
 - Skill 内资产：`$SKILL_DIR/assets/`。额外素材镜像仅从配置 `product_asset_mirror` 读取。
 - API key：优先使用 `ZENMUX_API_KEY`；备用文件仅从 `api_key_file` 配置或 `--api-key-file` 读取。不要把 key 或个人绝对路径写进 Skill 仓库。
+
+脚本模式首次安装、重新安装 Skill 或更换 Python 后运行初始化脚本。它会创建隔离的 `.venv`、安装依赖并验证运行环境：
+
+```bash
+bash "$SKILL_DIR/setup.sh"
+```
+
+脚本模式应使用 `$SKILL_DIR/.venv/bin/python3` 运行生成脚本，避免把依赖装进一个 Python、实际却调用另一个 Python。Agent 自主执行模式不需要初始化。
 
 支持的用户配置：
 
