@@ -105,6 +105,18 @@ assets/product-logos/           内置 AI 产品 Logo
 
 仅制作视频封面，不剪辑视频或操作发布平台。脚本模式向已配置服务发送候选帧、字幕和提示词，不上传整段视频；创作者头像仅在本地合成。平时从选题、录屏剪辑到做封面发多平台的流程，见 Oil Book 的[《如何从 0 到 1 开始做自媒体》](https://book.oiloil.org/articles/how-to-start-self-media?utm_source=github&utm_medium=referral&utm_campaign=oil-cover-readme)。
 
+---
+
+<p align="center">
+  <a href="https://studio.oiloil.org/?utm_source=github&utm_medium=readme&utm_campaign=oil-cover">
+    <img src="https://raw.githubusercontent.com/oil-oil/oil-studio-skill/main/assets/readme/creator-card.png" width="100%" alt="Oil Studio：给自媒体创作者的 Mac 录屏与口播精剪软件">
+  </a>
+</p>
+
+<p align="center">
+  <strong><a href="https://studio.oiloil.org/?utm_source=github&utm_medium=readme&utm_campaign=oil-cover">录屏、自动缩放、按文字剪口播、加字幕，一个 Mac App 搞定 → 了解 Oil Studio</a></strong>
+</p>
+
 ## License
 
 [MIT](LICENSE) © 2026 oil 欧呦
